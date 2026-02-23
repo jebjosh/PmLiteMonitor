@@ -36,11 +36,18 @@ public class TelemetryRecorder
     // Circular pre-buffer: timestamped raw frames
     private readonly ConcurrentQueue<(DateTime ts, byte[] frame)> _preBuffer = new();
 
+    // Snapshot of pre-buffer taken at the moment MRS fires
+    private (DateTime ts, byte[] frame)[]? _preSnapshot;
+
     // Post-buffer: filled after MRS fires
     private List<(DateTime ts, byte[] frame)>? _postBuffer;
     private DateTime _mrsOnTime;
     private bool     _recording;
     private bool     _lastMrsOn;
+
+    // Timer fires every 100ms to check if 4 seconds has elapsed
+    // independent of whether messages are still arriving
+    private System.Threading.Timer? _stopTimer;
 
     public bool IsRecording => _recording;
 
@@ -68,28 +75,62 @@ public class TelemetryRecorder
                 _recording   = true;
                 _mrsOnTime   = ts;
                 _postBuffer  = new List<(DateTime, byte[])>();
+
+                // Snapshot the pre-buffer NOW at the moment of MRS ON
+                // so we get the 100ms before, not 100ms before the 4-second mark
+                _preSnapshot = _preBuffer.ToArray();
+
                 OnStatusMessage?.Invoke($"MRS ON detected at {ts:HH:mm:ss.fff} — recording started.");
+
+                // Start a timer that checks every 100ms whether 4 seconds has elapsed.
+                // This fires independently of incoming messages so recording always stops.
+                _stopTimer = new System.Threading.Timer(
+                    CheckStopTimer,
+                    state: null,
+                    dueTime:  100,
+                    period:   100);
             }
 
             _lastMrsOn = msg.MrsOn;
 
-            // --- collecting post-MRS data ---
+            // --- accumulate post-MRS data ---
             if (_recording && _postBuffer is not null)
             {
                 _postBuffer.Add((ts, frame));
+            }
+        }
+    }
 
-                if ((ts - _mrsOnTime).TotalMilliseconds >= PostWindowMs)
-                {
-                    // Capture everything and hand off to background writer
-                    var pre  = _preBuffer.ToArray();   // snapshot
-                    var post = _postBuffer.ToArray();
-                    var captureTime = _mrsOnTime;
+    // ── Timer callback ───────────────────────────────────────────────────────
 
-                    _recording  = false;
-                    _postBuffer = null;
+    /// <summary>
+    /// Called every 100ms by the timer. Stops recording once 4 seconds
+    /// have elapsed since MRS ON, regardless of whether messages are arriving.
+    /// </summary>
+    private void CheckStopTimer(object? state)
+    {
+        lock (_lock)
+        {
+            if (!_recording) return;
 
-                    Task.Run(() => WriteFiles(pre, post, captureTime));
-                }
+            if ((DateTime.Now - _mrsOnTime).TotalMilliseconds >= PostWindowMs)
+            {
+                // Stop the timer first
+                _stopTimer?.Dispose();
+                _stopTimer = null;
+
+                // Capture snapshots and clear recording state
+                var pre         = _preSnapshot  ?? Array.Empty<(DateTime, byte[])>();
+                var post        = _postBuffer?.ToArray() ?? Array.Empty<(DateTime, byte[])>();
+                var captureTime = _mrsOnTime;
+
+                _recording   = false;
+                _postBuffer  = null;
+                _preSnapshot = null;
+
+                OnStatusMessage?.Invoke($"Recording stopped at {DateTime.Now:HH:mm:ss.fff} — writing files.");
+
+                Task.Run(() => WriteFiles(pre, post, captureTime));
             }
         }
     }
