@@ -8,7 +8,71 @@
         FontFamily="Segoe UI"
         Width="720" Height="740"
         WindowStartupLocation="CenterOwner"
-        ShowInTaskbar="False">
+        ShowInTaskbar="False"
+        TextElement.Foreground="White"
+        TextElement.FontSize="13">
+
+    <Window.Resources>
+        <!-- Override MD theme brushes that control TextBox inner text color -->
+        <SolidColorBrush x:Key="MaterialDesignBody"                    Color="White"/>
+        <SolidColorBrush x:Key="MaterialDesignBodyLight"               Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="MaterialDesignTextFieldBoxBackground"   Color="#2A2A2A"/>
+        <SolidColorBrush x:Key="MaterialDesignTextAreaBorder"          Color="#666666"/>
+        <SolidColorBrush x:Key="MaterialDesignTextAreaInactiveBorder"  Color="#444444"/>
+
+        <!-- Fully custom outlined TextBox style — bypasses all MD internal foreground bindings -->
+        <Style x:Key="DarkOutlinedTextBox" TargetType="TextBox">
+            <Setter Property="Background"         Value="#333333"/>
+            <Setter Property="Foreground"         Value="White"/>
+            <Setter Property="CaretBrush"         Value="White"/>
+            <Setter Property="SelectionBrush"     Value="#6690CAF9"/>
+            <Setter Property="BorderBrush"        Value="#666666"/>
+            <Setter Property="BorderThickness"    Value="1"/>
+            <Setter Property="Padding"            Value="6,4"/>
+            <Setter Property="FontSize"           Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <!-- CRITICAL: Use TextElement.Foreground (attached), NOT Foreground -->
+                            <!-- ScrollViewer.Foreground does NOT reach the inner TextBoxView -->
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="{TemplateBinding Padding}"
+                                          TextElement.Foreground="White"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush"     Value="#90CAF9"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#888888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Apply the custom style to ALL TextBoxes in this window -->
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkOutlinedTextBox}"/>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style TargetType="CheckBox" BasedOn="{StaticResource MaterialDesignCheckBox}">
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+    </Window.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
     <StackPanel Margin="10">
@@ -25,31 +89,37 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                        <TextBlock Text="IP Address" FontSize="10" Foreground="#AAA"/>
+                        <TextBlock Text="IP Address" FontSize="10" Foreground="#AAAAAA"/>
                         <TextBox Text="{Binding IpAddress}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="IP Address" Height="36"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="IP Address"
+                                 md:HintAssist.Foreground="#AAAAAA"
+                                 Height="36"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,6,0">
-                        <TextBlock Text="Port Number" FontSize="10" Foreground="#AAA"/>
+                        <TextBlock Text="Port Number" FontSize="10" Foreground="#AAAAAA"/>
                         <TextBox Text="{Binding PortText}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="1024" Height="36"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="1024"
+                                 md:HintAssist.Foreground="#AAAAAA"
+                                 Height="36"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Bottom">
-                        <TextBlock Text="Connection Status" FontSize="10" Foreground="#AAA"/>
+                        <TextBlock Text="Connection Status" FontSize="10" Foreground="#AAAAAA"/>
                         <ctrl:StatusIcon State="{Binding ConnIconState}" Margin="0,4,0,0"/>
                     </StackPanel>
                     <Button Grid.Column="3" Content="Connect To Firmware"
                             Command="{Binding ConnectCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Background="#1B5E20" VerticalAlignment="Bottom" Padding="12,8"/>
+                            Background="#1B5E20" Foreground="White"
+                            VerticalAlignment="Bottom" Padding="12,8"/>
                 </Grid>
-                <TextBlock Text="{Binding ConnectionStatus}" FontSize="10" Foreground="#888" Margin="0,4,0,0"/>
+                <TextBlock Text="{Binding ConnectionStatus}"
+                           FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,0"/>
             </StackPanel>
         </Border>
 
-        <!-- ═══ Firmware Info (updated after Status message) ════════════════ -->
+        <!-- ═══ Firmware Info ════════════════════════════════════════════════ -->
         <Border Style="{StaticResource SectionBorder}" Margin="0,0,0,8">
             <StackPanel>
                 <TextBlock Text="Firmware Info" Style="{StaticResource SectionHeader}"/>
@@ -58,28 +128,28 @@
                         <ColumnDefinition/><ColumnDefinition/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
-                        <TextBlock>
-                            <Run Foreground="#AAA">Firmware Version: </Run>
-                            <Run Text="{Binding FwVersion}"/>
-                        </TextBlock>
-                        <TextBlock>
-                            <Run Foreground="#AAA">Firmware Serial:  </Run>
-                            <Run Text="{Binding FwSerial}"/>
-                        </TextBlock>
-                        <TextBlock>
-                            <Run Foreground="#AAA">Firmware Build:   </Run>
-                            <Run Text="{Binding FwBuild}"/>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="Firmware Version: " Foreground="#AAAAAA"/>
+                            <TextBlock Text="{Binding FwVersion}" Foreground="White"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="Firmware Serial: " Foreground="#AAAAAA"/>
+                            <TextBlock Text="{Binding FwSerial}" Foreground="White"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="Firmware Build: " Foreground="#AAAAAA"/>
+                            <TextBlock Text="{Binding FwBuild}" Foreground="White"/>
+                        </StackPanel>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
-                        <TextBlock>
-                            <Run Foreground="#AAA">Firmware Date: </Run>
-                            <Run Text="{Binding FwDate}"/>
-                        </TextBlock>
-                        <TextBlock>
-                            <Run Foreground="#AAA">Firmware Time: </Run>
-                            <Run Text="{Binding FwTime}"/>
-                        </TextBlock>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="Firmware Date: " Foreground="#AAAAAA"/>
+                            <TextBlock Text="{Binding FwDate}" Foreground="White"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,2">
+                            <TextBlock Text="Firmware Time: " Foreground="#AAAAAA"/>
+                            <TextBlock Text="{Binding FwTime}" Foreground="White"/>
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </StackPanel>
@@ -93,29 +163,30 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="Configure Message" Style="{StaticResource SectionHeader}"/>
-                    <TextBlock Text="PAC Mode" FontSize="10" Foreground="#AAA" Margin="0,4,0,4"/>
-                    <CheckBox Content="Flight Mode"  IsChecked="{Binding PacFlight}"  Margin="0,2"/>
-                    <CheckBox Content="Missile Mode" IsChecked="{Binding PacMissile}" Margin="0,2"/>
+                    <TextBlock Text="PAC Mode" FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,4"/>
+                    <CheckBox Content="Flight Mode"  IsChecked="{Binding PacFlight}"  Foreground="White" Margin="0,2"/>
+                    <CheckBox Content="Missile Mode" IsChecked="{Binding PacMissile}" Foreground="White" Margin="0,2"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <TextBlock Text=" " Style="{StaticResource SectionHeader}"/>
-                    <TextBlock Text="Terminate Mode" FontSize="10" Foreground="#AAA" Margin="0,4,0,4"/>
-                    <CheckBox Content="Vehicle Safed"    IsChecked="{Binding TermSafed}" Margin="0,2"/>
-                    <CheckBox Content="Commanded Space"  IsChecked="{Binding TermArmed}" Margin="0,2"/>
-                    <Separator Margin="0,6"/>
-                    <TextBlock Text="DUD Override" FontSize="10" Foreground="#AAA" Margin="0,4,0,4"/>
-                    <CheckBox IsChecked="{Binding DudOverride}" Margin="0,2"/>
-                    <TextBlock Text="Reset" FontSize="10" Foreground="#AAA" Margin="0,6,0,4"/>
-                    <CheckBox IsChecked="{Binding ResetFlag}" Margin="0,2"/>
+                    <TextBlock Text="Terminate Mode" FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,4"/>
+                    <CheckBox Content="Vehicle Safed"   IsChecked="{Binding TermSafed}" Foreground="White" Margin="0,2"/>
+                    <CheckBox Content="Commanded Space" IsChecked="{Binding TermArmed}" Foreground="White" Margin="0,2"/>
+                    <Separator Margin="0,6" Background="#444"/>
+                    <TextBlock Text="DUD Override" FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,4"/>
+                    <CheckBox IsChecked="{Binding DudOverride}" Foreground="White" Margin="0,2"/>
+                    <TextBlock Text="Reset" FontSize="10" Foreground="#AAAAAA" Margin="0,6,0,4"/>
+                    <CheckBox IsChecked="{Binding ResetFlag}" Foreground="White" Margin="0,2"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Margin="12,0,0,0">
-                    <TextBlock Text="Send Status" FontSize="10" Foreground="#AAA" Margin="0,0,0,4"/>
+                    <TextBlock Text="Send Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
                     <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,8">
-                        <TextBlock Text="{Binding ConfigSendStatus}" FontSize="11"/>
+                        <TextBlock Text="{Binding ConfigSendStatus}" Foreground="White" FontSize="11"/>
                     </Border>
                     <Button Content="Send"
                             Command="{Binding SendConfigCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}" Padding="20,8"/>
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Foreground="White" Padding="20,8"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -149,42 +220,52 @@
                         <TextBlock Grid.Column="4" Text="Data 2" Style="{StaticResource ColHeader}"/>
                         <TextBlock Grid.Column="5" Text="Data 3" Style="{StaticResource ColHeader}"/>
 
-                        <!-- Sent row — editable -->
-                        <TextBlock Grid.Row="1" Text="Sent" VerticalAlignment="Center"
-                                   FontSize="11" Foreground="#AAA"/>
+                        <!-- Sent row — editable TextBoxes -->
+                        <TextBlock Grid.Row="1" Text="Sent"
+                                   VerticalAlignment="Center" FontSize="11" Foreground="#AAAAAA"/>
                         <TextBox Grid.Row="1" Grid.Column="1"
                                  Text="{Binding LbCountText, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="0" Margin="2" Height="32"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
+                                 Margin="2" Height="32"/>
                         <TextBox Grid.Row="1" Grid.Column="2"
                                  Text="{Binding LbData0Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="0" Margin="2" Height="32"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
+                                 Margin="2" Height="32"/>
                         <TextBox Grid.Row="1" Grid.Column="3"
                                  Text="{Binding LbData1Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="0" Margin="2" Height="32"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
+                                 Margin="2" Height="32"/>
                         <TextBox Grid.Row="1" Grid.Column="4"
                                  Text="{Binding LbData2Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="0" Margin="2" Height="32"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
+                                 Margin="2" Height="32"/>
                         <TextBox Grid.Row="1" Grid.Column="5"
                                  Text="{Binding LbData3Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                                 md:HintAssist.Hint="0" Margin="2" Height="32"/>
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
+                                 Margin="2" Height="32"/>
 
-                        <!-- Received row — read-only display -->
-                        <TextBlock Grid.Row="2" Text="Received" VerticalAlignment="Center"
-                                   FontSize="11" Foreground="#AAA"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LbRxCount}" Style="{StaticResource CellValue}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding LbRxData0}" Style="{StaticResource CellValue}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding LbRxData1}" Style="{StaticResource CellValue}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding LbRxData2}" Style="{StaticResource CellValue}"/>
-                        <TextBlock Grid.Row="2" Grid.Column="5" Text="{Binding LbRxData3}" Style="{StaticResource CellValue}"/>
+                        <!-- Received row -->
+                        <TextBlock Grid.Row="2" Text="Received"
+                                   VerticalAlignment="Center" FontSize="11" Foreground="#AAAAAA"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LbRxCount}"
+                                   Style="{StaticResource CellValue}" Foreground="White"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding LbRxData0}"
+                                   Style="{StaticResource CellValue}" Foreground="White"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding LbRxData1}"
+                                   Style="{StaticResource CellValue}" Foreground="White"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding LbRxData2}"
+                                   Style="{StaticResource CellValue}" Foreground="White"/>
+                        <TextBlock Grid.Row="2" Grid.Column="5" Text="{Binding LbRxData3}"
+                                   Style="{StaticResource CellValue}" Foreground="White"/>
 
-                        <!-- Compare row — Green = match, Red = mismatch -->
-                        <TextBlock Grid.Row="3" Text="Compare" VerticalAlignment="Center"
-                                   FontSize="11" Foreground="#AAA"/>
+                        <!-- Compare row -->
+                        <TextBlock Grid.Row="3" Text="Compare"
+                                   VerticalAlignment="Center" FontSize="11" Foreground="#AAAAAA"/>
                         <ctrl:StatusIcon Grid.Row="3" Grid.Column="1" State="{Binding CmpCountIcon}" Margin="4,2"/>
                         <ctrl:StatusIcon Grid.Row="3" Grid.Column="2" State="{Binding CmpData0Icon}" Margin="4,2"/>
                         <ctrl:StatusIcon Grid.Row="3" Grid.Column="3" State="{Binding CmpData1Icon}" Margin="4,2"/>
@@ -193,15 +274,16 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Send button column -->
+                <!-- Send button -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <TextBlock Text="Send Status" FontSize="10" Foreground="#AAA" Margin="0,0,0,4"/>
+                    <TextBlock Text="Send Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
                     <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,8">
-                        <TextBlock Text="{Binding LoopbackSendStatus}" FontSize="11"/>
+                        <TextBlock Text="{Binding LoopbackSendStatus}" Foreground="White" FontSize="11"/>
                     </Border>
                     <Button Content="Send"
                             Command="{Binding SendLoopbackCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}" Padding="20,8"/>
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Foreground="White" Padding="20,8"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -215,16 +297,17 @@
             <Border Grid.Column="0" Style="{StaticResource SectionBorder}" Margin="0,0,4,0">
                 <StackPanel>
                     <TextBlock Text="Status Message" Style="{StaticResource SectionHeader}"/>
-                    <TextBlock Text="Data Type Request" FontSize="10" Foreground="#AAA" Margin="0,4,0,6"/>
-                    <CheckBox IsChecked="{Binding StatusDataType}" Margin="0,2"/>
+                    <TextBlock Text="Data Type Request" FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,6"/>
+                    <CheckBox IsChecked="{Binding StatusDataType}" Foreground="White" Margin="0,2"/>
                     <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <Border CornerRadius="3" Padding="8,4" Background="#2A2A2A" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding StatusSendStatus}" FontSize="11"/>
+                            <TextBlock Text="{Binding StatusSendStatus}" Foreground="White" FontSize="11"/>
                         </Border>
                         <Button Grid.Column="1" Content="Send"
                                 Command="{Binding SendStatusRequestCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
+                                Foreground="White"
                                 Margin="8,0,0,0" Padding="16,6"/>
                     </Grid>
                 </StackPanel>
@@ -233,23 +316,28 @@
             <Border Grid.Column="1" Style="{StaticResource SectionBorder}" Margin="4,0,0,0">
                 <StackPanel>
                     <TextBlock Text="Ping" Style="{StaticResource SectionHeader}"/>
-                    <TextBlock Text="IP Address" FontSize="10" Foreground="#AAA"/>
+                    <TextBlock Text="IP Address" FontSize="10" Foreground="#AAAAAA"/>
                     <TextBox Text="{Binding PingAddress}"
-                             Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                             md:HintAssist.Hint="IP Address" Margin="0,4" Height="36"/>
+                             Foreground="White" CaretBrush="White"
+                             md:HintAssist.Hint="IP Address"
+                             md:HintAssist.Foreground="#AAAAAA"
+                             Margin="0,4" Height="36"/>
                     <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Text="Ping Status" FontSize="10" Foreground="#AAA" Margin="0,0,0,4"/>
+                            <TextBlock Text="Ping Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
                             <StackPanel Orientation="Horizontal">
-                                <ctrl:StatusIcon State="{Binding PingIconState}" Width="24" Height="24" Margin="0,0,6,0"/>
-                                <TextBlock Text="{Binding PingStatus}" VerticalAlignment="Center" FontSize="11"/>
+                                <ctrl:StatusIcon State="{Binding PingIconState}"
+                                                 Width="24" Height="24" Margin="0,0,6,0"/>
+                                <TextBlock Text="{Binding PingStatus}"
+                                           Foreground="White"
+                                           VerticalAlignment="Center" FontSize="11"/>
                             </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Content="Ping"
                                 Command="{Binding PingCommand}"
                                 Style="{StaticResource MaterialDesignRaisedButton}"
-                                Background="#1B5E20"
+                                Background="#1B5E20" Foreground="White"
                                 VerticalAlignment="Bottom" Margin="8,0,0,0" Padding="16,6"/>
                     </Grid>
                 </StackPanel>
@@ -264,10 +352,11 @@
                     <TextBox Text="{Binding DebugOutput, Mode=OneWay}"
                              IsReadOnly="True"
                              Background="Transparent" BorderThickness="0"
-                             Foreground="#CCCCCC"
+                             Foreground="#CCCCCC" CaretBrush="White"
                              FontFamily="Consolas" FontSize="10"
                              TextWrapping="Wrap"
-                             md:HintAssist.Hint="Debug Mode TextBox"/>
+                             md:HintAssist.Hint="Debug Mode TextBox"
+                             md:HintAssist.Foreground="#AAAAAA"/>
                 </ScrollViewer>
             </StackPanel>
         </Border>
