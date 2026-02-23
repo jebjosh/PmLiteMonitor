@@ -1,0 +1,109 @@
+<Window x:Class="PmLiteMonitor.Views.AboutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="About PM-LITE Monitor 2.0 (Debug Mode)"
+        Background="#1E1E1E" Foreground="White"
+        FontFamily="Segoe UI"
+        Width="420" Height="520"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>  <!-- Title bar row -->
+            <RowDefinition Height="Auto"/>  <!-- Firmware info -->
+            <RowDefinition Height="Auto"/>  <!-- Proprietary notice -->
+            <RowDefinition Height="Auto"/>  <!-- ITAR warning -->
+            <RowDefinition Height="Auto"/>  <!-- Copyright -->
+        </Grid.RowDefinitions>
+
+        <!-- ═══ Title ══════════════════════════════════════════════════════ -->
+        <TextBlock Grid.Row="0"
+                   Text="PM-LITE Monitor 2.0"
+                   FontSize="18" FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,16"/>
+
+        <!-- ═══ Firmware Fields ════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="1" Margin="0,0,0,16">
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Firmware Version:" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareVersion}"/>
+            </Grid>
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Firmware Serial Number:" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareSerial}"/>
+            </Grid>
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Firmware Build Number:" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareBuild}"/>
+            </Grid>
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Firmware Date:" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareDate}"/>
+            </Grid>
+            <Grid Margin="0,3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="180"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Firmware Time:" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding FirmwareTime}"/>
+            </Grid>
+        </StackPanel>
+
+        <!-- ═══ Proprietary Notice ════════════════════════════════════════ -->
+        <Border Grid.Row="2"
+                BorderBrush="#888" BorderThickness="1"
+                Padding="8" Margin="0,0,0,8">
+            <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#DDDDDD"
+                       LineHeight="16">
+                This document contains proprietary data or information
+                pertaining to items or components, or processes, or other
+                matter developed or acquired at the private expense of the
+                Raytheon Company and is restricted to use only by persons
+                authorized by Raytheon in writing to use it. Disclosure to
+                unauthorized persons would likely cause substantial
+            </TextBlock>
+        </Border>
+
+        <!-- ═══ ITAR Warning ═════════════════════════════════════════════ -->
+        <Border Grid.Row="3"
+                BorderBrush="#888" BorderThickness="1"
+                Padding="8" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock FontWeight="Bold" FontSize="11" TextWrapping="Wrap"
+                           Text="WARNING – This document contains Technical Data and/or technology whose export or disclosure to Non-U.S.Persons, wherever located, is restricted by the International Traffic in Arms Regulations (ITAR) (22 C.F.R.Section 120-130) or the Export Administration Regulations(EAR) (15 C.F.R.Section 730-774). This document CANNOT be exported(e.g., provided"
+                           Foreground="#DDDDDD" LineHeight="16"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ═══ Copyright ════════════════════════════════════════════════ -->
+        <StackPanel Grid.Row="4" HorizontalAlignment="Center">
+            <TextBlock Text="Copyright © 2023 Raytheon"
+                       HorizontalAlignment="Center" FontSize="11"/>
+            <TextBlock Text="All Rights Reserved"
+                       HorizontalAlignment="Center" FontSize="11"/>
+            <TextBlock Text="Raytheon Proprietary, Company Private"
+                       HorizontalAlignment="Center" FontSize="11" FontStyle="Italic"/>
+        </StackPanel>
+    </Grid>
+</Window>

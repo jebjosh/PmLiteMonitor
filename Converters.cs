@@ -2,14 +2,16 @@ using System.Globalization;
 using System.Windows.Data;
 using System.Windows.Media;
 using PmLiteMonitor.Controls;
+using WpfBrush  = System.Windows.Media.Brush;
+using WpfColor  = System.Windows.Media.Color;
 
 namespace PmLiteMonitor;
 
 /// <summary>true → Green brush, false → Red brush</summary>
 public class BoolToBrushConverter : IValueConverter
 {
-    public Brush TrueBrush  { get; set; } = new SolidColorBrush(Color.FromRgb(27,  94, 32));
-    public Brush FalseBrush { get; set; } = new SolidColorBrush(Color.FromRgb(183, 28, 28));
+    public WpfBrush TrueBrush  { get; set; } = new SolidColorBrush(WpfColor.FromRgb(27,  94, 32));
+    public WpfBrush FalseBrush { get; set; } = new SolidColorBrush(WpfColor.FromRgb(183, 28, 28));
 
     public object Convert(object value, Type t, object p, CultureInfo c) =>
         value is true ? TrueBrush : FalseBrush;

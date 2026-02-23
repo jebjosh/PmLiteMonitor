@@ -32,7 +32,8 @@
                         ToolTip="Configuration" Click="OpenConfig_Click">
                     <md:PackIcon Kind="Cog" Width="22" Height="22"/>
                 </Button>
-                <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="About">
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="About" Click="OpenAbout_Click">
                     <md:PackIcon Kind="InformationOutline" Width="22" Height="22"/>
                 </Button>
             </StackPanel>

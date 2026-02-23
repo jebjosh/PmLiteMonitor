@@ -2,6 +2,10 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
+// Explicitly use WPF UserControl to avoid conflict with Windows.Forms.UserControl
+using UserControl = System.Windows.Controls.UserControl;
+using WpfColor    = System.Windows.Media.Color;
+
 namespace PmLiteMonitor.Controls;
 
 public enum IconState { Gray, Red, Green, Blue }
@@ -29,10 +33,10 @@ public partial class StatusIcon : UserControl
     {
         FillRect.Fill = State switch
         {
-            IconState.Red   => new SolidColorBrush(Color.FromRgb(200, 40,  40)),
-            IconState.Green => new SolidColorBrush(Color.FromRgb(40,  190, 70)),
-            IconState.Blue  => new SolidColorBrush(Color.FromRgb(40,  110, 210)),
-            _               => new SolidColorBrush(Color.FromRgb(80,  80,  80))
+            IconState.Red   => new SolidColorBrush(WpfColor.FromRgb(200, 40,  40)),
+            IconState.Green => new SolidColorBrush(WpfColor.FromRgb(40,  190, 70)),
+            IconState.Blue  => new SolidColorBrush(WpfColor.FromRgb(40,  110, 210)),
+            _               => new SolidColorBrush(WpfColor.FromRgb(80,  80,  80))
         };
         StripeOverlay.Visibility = State == IconState.Gray
             ? Visibility.Visible : Visibility.Collapsed;

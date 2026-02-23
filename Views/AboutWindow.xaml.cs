@@ -3,7 +3,7 @@ using Window = System.Windows.Window;
 
 namespace PmLiteMonitor.Views;
 
-public partial class ConfigWindow : Window
+public partial class AboutWindow : Window
 {
-    public ConfigWindow() => InitializeComponent();
+    public AboutWindow() => InitializeComponent();
 }

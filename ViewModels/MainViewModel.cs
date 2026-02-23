@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -5,6 +6,7 @@ using PmLiteMonitor.Controls;
 using PmLiteMonitor.Messages;
 using PmLiteMonitor.Networking;
 using PmLiteMonitor.Services;
+using WinForms = System.Windows.Forms;
 
 namespace PmLiteMonitor.ViewModels;
 
@@ -14,6 +16,9 @@ public partial class MainViewModel : ObservableObject
     public TcpMessageClient Client { get; } = new();
 
     private readonly TelemetryRecorder _recorder = new();
+
+    /// <summary>Shared across MainWindow and AboutWindow.</summary>
+    public AboutViewModel AboutVm { get; } = new();
 
     // ── Connection ───────────────────────────────────────────────────────────
     [ObservableProperty] private string _systemState   = "Disconnected";
@@ -139,7 +144,7 @@ public partial class MainViewModel : ObservableObject
         _recorder.OutputPath = _recordOutputPath;
 
         _recorder.OnRecordingComplete += msg =>
-            Application.Current?.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
                 IsRecording  = false;
                 RecordStatus = $"✔ {msg}";
@@ -147,7 +152,7 @@ public partial class MainViewModel : ObservableObject
             });
 
         _recorder.OnStatusMessage += msg =>
-            Application.Current?.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
                 IsRecording  = _recorder.IsRecording;
                 RecordStatus = msg;
@@ -159,7 +164,7 @@ public partial class MainViewModel : ObservableObject
         Client.OnError           += ex  => AppendLog($"[ERROR] {ex.Message}");
         Client.OnDisconnected    += ()  =>
         {
-            Application.Current?.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             {
                 SystemState  = "Disconnected";
                 IsConnected  = false;
@@ -175,7 +180,7 @@ public partial class MainViewModel : ObservableObject
             AppendLog($"[RAW]  type={message.MessageType} size={message.Size} " +
                       $"data={BitConverter.ToString(message.RawData)}");
 
-        Application.Current?.Dispatcher.Invoke(() =>
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
         {
             switch (message)
             {
@@ -280,6 +285,7 @@ public partial class MainViewModel : ObservableObject
     private void ApplyStatus(StatusMessage s)
     {
         PmLiteMode = s.PmLiteMode;
+        AboutVm.ApplyStatus(s);
         AppendLog($"[STATUS] FW: {s.FirmwareVersion} | Build: {s.FirmwareBuild} | Mode: {s.PmLiteMode}");
     }
 
@@ -319,15 +325,15 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void BrowseOutputPath()
     {
-        var dlg = new System.Windows.Forms.FolderBrowserDialog
+        var dlg = new WinForms.FolderBrowserDialog
         {
             Description  = "Select telemetry capture output folder",
             SelectedPath = RecordOutputPath
         };
-        if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        if (dlg.ShowDialog() == WinForms.DialogResult.OK)
         {
-            RecordOutputPath      = dlg.SelectedPath;
-            _recorder.OutputPath  = dlg.SelectedPath;
+            RecordOutputPath     = dlg.SelectedPath;
+            _recorder.OutputPath = dlg.SelectedPath;
         }
     }
 
@@ -337,7 +343,7 @@ public partial class MainViewModel : ObservableObject
     // ── Helpers ───────────────────────────────────────────────────────────────
     private void AppendLog(string line)
     {
-        Application.Current?.Dispatcher.Invoke(() =>
+        System.Windows.Application.Current?.Dispatcher.Invoke(() =>
             EventLog += $"{DateTime.Now:HH:mm:ss.fff}  {line}\n");
     }
 
