@@ -1,0 +1,403 @@
+<Window x:Class="PmLiteMonitor.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:md="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:ctrl="clr-namespace:PmLiteMonitor.Controls"
+        Title="PM-LITE Monitor 2.0"
+        Background="#121212" Foreground="White"
+        FontFamily="Segoe UI"
+        Width="1000" Height="870"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid Margin="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- ═══ HEADER ═══════════════════════════════════════════════════════ -->
+        <Grid Grid.Row="0" Margin="0,0,0,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="Configuration" Click="OpenConfig_Click">
+                    <md:PackIcon Kind="Cog" Width="22" Height="22"/>
+                </Button>
+                <Button Style="{StaticResource MaterialDesignIconButton}" ToolTip="About">
+                    <md:PackIcon Kind="InformationOutline" Width="22" Height="22"/>
+                </Button>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                <TextBlock Text="PM-LITE Monitor 2.0"
+                           FontSize="20" FontWeight="Bold" HorizontalAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,3,0,0">
+                    <TextBlock Text="System State" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                    <Border CornerRadius="3" Padding="10,2"
+                            Background="{Binding IsConnected, Converter={StaticResource BoolToBrushConverter}}">
+                        <TextBlock Text="{Binding SystemState}" FontWeight="Bold"/>
+                    </Border>
+                    <TextBlock Text="PM LITE Mode" VerticalAlignment="Center" Margin="14,0,6,0"/>
+                    <Border CornerRadius="3" Padding="10,2" Background="#2A2A2A">
+                        <TextBlock Text="{Binding PmLiteMode}"/>
+                    </Border>
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Recording indicator -->
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                <Border CornerRadius="4" Padding="8,4"
+                        Background="{Binding IsRecording, Converter={StaticResource BoolToBrushConverter}}"
+                        Margin="0,0,0,4">
+                    <TextBlock Text="{Binding IsRecording, Converter={StaticResource RecordingLabelConverter},
+                                        FallbackValue='● IDLE'}"
+                               FontWeight="Bold" FontSize="11"/>
+                </Border>
+                <TextBlock Text="{Binding RecordStatus}"
+                           FontSize="9" Foreground="#AAA"
+                           TextWrapping="Wrap" MaxWidth="160" TextAlignment="Right"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ═══ ROW 1: Connection + Missile + Power ══════════════════════════ -->
+        <Grid Grid.Row="1" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="150"/>
+                <ColumnDefinition Width="Auto" MinWidth="260"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Connection -->
+            <Border Grid.Column="0" Style="{StaticResource SectionBorder}" Margin="0,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Connection" Style="{StaticResource SectionHeader}"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                        <StackPanel Margin="0,0,12,0" HorizontalAlignment="Center">
+                            <TextBlock Text="TCP" Style="{StaticResource ColHeader}"/>
+                            <ctrl:StatusIcon State="{Binding TcpIconState}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                        <StackPanel HorizontalAlignment="Center">
+                            <TextBlock Text="Missile Cont." Style="{StaticResource ColHeader}"/>
+                            <ctrl:StatusIcon State="{Binding MissileContState}" Margin="0,3,0,0"/>
+                        </StackPanel>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Endpoint}" FontSize="9" Foreground="#888" Margin="0,6,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Missile -->
+            <Border Grid.Column="1" Style="{StaticResource SectionBorder}" Margin="0,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Missile" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="6"/>
+                            <RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock Grid.Column="0" Text="Type"      Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="Frequency" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="Address"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="MRR"       Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding MissileType}"      Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding MissileFrequency}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding MissileAddress}"   Style="{StaticResource CellValue}"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="3" State="{Binding MrrState}" Margin="4,2"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Power -->
+            <Border Grid.Column="2" Style="{StaticResource SectionBorder}">
+                <StackPanel>
+                    <TextBlock Text="Power" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions><RowDefinition/><RowDefinition Height="4"/>
+                            <RowDefinition/><RowDefinition/></Grid.RowDefinitions>
+                        <TextBlock Grid.Column="0" Text="ITM"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="MBC"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="CLOCK" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="TWT"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="GYRO"  Style="{StaticResource ColHeader}"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="0" State="{Binding ItmState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="1" State="{Binding MbcState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="2" State="{Binding ClockState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="3" State="{Binding TwtState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="2" Grid.Column="4" State="{Binding GyroState}"  Margin="4,2"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="{Binding ItmValue,       StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding MbcValue,       StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="2" Text="{Binding ClockValue,     StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="3" Text="{Binding TwtValue,       StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="3" Grid.Column="4" Text="{Binding GyroPowerValue, StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ═══ ROW 2: Temperature Monitors + Launch Sequence ════════════════ -->
+        <Grid Grid.Row="2" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto" MinWidth="290"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Temperature Monitors -->
+            <Border Grid.Column="0" Style="{StaticResource SectionBorder}" Margin="0,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Temperature Monitors" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="36"/>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Headers -->
+                        <TextBlock Grid.Column="1" Text="TVM"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="MMP"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="PLLO"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="DELAY" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="5" Text="GYRO"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="6" Text="ISA"   Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="7" Text="CAS"   Style="{StaticResource ColHeader}"/>
+
+                        <!-- TEMP icons -->
+                        <TextBlock Grid.Row="1" Text="TEMP" VerticalAlignment="Center"
+                                   FontSize="9" Foreground="#AAA"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="1" State="{Binding TvmTempState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="2" State="{Binding MmpTempState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="3" State="{Binding PlloTempState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="4" State="{Binding DelayTempState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="5" State="{Binding GyroTempState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="6" State="{Binding IsaTempState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="7" State="{Binding CasTempState}"   Margin="4,2"/>
+
+                        <!-- TEMP values -->
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding TvmTemp,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding MmpTemp,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding PlloTemp,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding DelayTemp, StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="5" Text="{Binding GyroTemp,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="6" Text="{Binding IsaTemp,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="7" Text="{Binding CasTemp,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+
+                        <!-- HTR icons -->
+                        <TextBlock Grid.Row="3" Text="HTR" VerticalAlignment="Center"
+                                   FontSize="9" Foreground="#AAA"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="1" State="{Binding TvmHtrState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="2" State="{Binding MmpHtrState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="3" State="{Binding PlloHtrState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="4" State="{Binding DelayHtrState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="5" State="{Binding GyroHtrState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="6" State="{Binding IsaHtrState}"   Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="3" Grid.Column="7" State="{Binding CasHtrState}"   Margin="4,2"/>
+
+                        <!-- HTR text -->
+                        <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding TvmHtrText}"   Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="2" Text="{Binding MmpHtrText}"   Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="3" Text="{Binding PlloHtrText}"  Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="4" Text="{Binding DelayHtrText}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="5" Text="{Binding GyroHtrText}"  Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="6" Text="{Binding IsaHtrText}"   Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="4" Grid.Column="7" Text="{Binding CasHtrText}"   Style="{StaticResource CellValue}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Launch Sequence -->
+            <Border Grid.Column="1" Style="{StaticResource SectionBorder}">
+                <StackPanel>
+                    <TextBlock Text="Launch Sequence" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Column="0" Text="MRS" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="ITL" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="SLS" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="MIR" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="AWY" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="5" Text="LSF" Style="{StaticResource ColHeader}"/>
+
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="0" State="{Binding MrsIconState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="1" State="{Binding ItlIconState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="2" State="{Binding SlsIconState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="3" State="{Binding MirIconState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="4" State="{Binding AwyIconState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="5" State="{Binding LsfIconState}" Margin="4,2"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding MrsText}" Style="{StaticResource StateText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ItlText}" Style="{StaticResource StateText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding SlsText}" Style="{StaticResource StateText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding MirText}" Style="{StaticResource StateText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding AwyText}" Style="{StaticResource StateText}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="5" Text="{Binding LsfText}" Style="{StaticResource StateText}"/>
+                    </Grid>
+                    <TextBlock Text="{Binding MdcText}"   FontSize="9" Foreground="#888" Margin="0,8,0,0"/>
+                    <TextBlock Text="{Binding OctalText}" FontSize="9" Foreground="#888"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ═══ ROW 3: Safe & Arming + One Shots ════════════════════════════ -->
+        <Grid Grid.Row="3" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto" MinWidth="310"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Safe & Arming -->
+            <Border Grid.Column="0" Style="{StaticResource SectionBorder}" Margin="0,0,5,0">
+                <StackPanel>
+                    <TextBlock Text="Safe And Arming" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Column="0" Text="Chrg Cmd"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="PAFU"      Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="5Vdc"      Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="Condition" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="Left Cap"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="5" Text="L. Latch"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="6" Text="Right Cap" Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="7" Text="Right"     Style="{StaticResource ColHeader}"/>
+
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="0" State="{Binding SaChrgState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="1" State="{Binding SaPafuState}" Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="2" State="{Binding Sa5VdcState}" Margin="4,2"/>
+
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding ChrgCmd,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Pafu,      StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding FiveVdc,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding Condition, StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding LeftCap,   StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="5" Text="{Binding LeftLatch, StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="6" Text="{Binding RightCap,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="7" Text="{Binding Right,     StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- One Shots -->
+            <Border Grid.Column="1" Style="{StaticResource SectionBorder}">
+                <StackPanel>
+                    <TextBlock Text="One Shots" Style="{StaticResource SectionHeader}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/><ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Column="0" Text="TVM"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="1" Text="MMP"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="2" Text="CAS"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="3" Text="GAS"  Style="{StaticResource ColHeader}"/>
+                        <TextBlock Grid.Column="4" Text="PAFU" Style="{StaticResource ColHeader}"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="0" State="{Binding OneTvmState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="1" State="{Binding OneMmpState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="2" State="{Binding OneCasState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="3" State="{Binding OneGasState}"  Margin="4,2"/>
+                        <ctrl:StatusIcon Grid.Row="1" Grid.Column="4" State="{Binding OnePafuState}" Margin="4,2"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="{Binding OneTvm,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding OneMmp,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="2" Text="{Binding OneCas,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="3" Text="{Binding OneGas,  StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                        <TextBlock Grid.Row="2" Grid.Column="4" Text="{Binding OnePafu, StringFormat=F2}" Style="{StaticResource CellValue}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- ═══ ROW 4: Record Output Path ════════════════════════════════════ -->
+        <Border Grid.Row="4" Style="{StaticResource SectionBorder}" Margin="0,0,0,5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="Capture Output Path" VerticalAlignment="Center"
+                           Foreground="#90CAF9" FontWeight="SemiBold" Margin="0,0,10,0"/>
+                <TextBox Grid.Column="1"
+                         Text="{Binding RecordOutputPath, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
+                         md:HintAssist.Hint="Path where .bin and .txt capture files will be written"
+                         Padding="6,2" Height="32"/>
+                <Button Grid.Column="2" Content="Browse…"
+                        Command="{Binding BrowseOutputPathCommand}"
+                        Style="{StaticResource MaterialDesignOutlinedButton}"
+                        Margin="6,0,0,0" Height="32"/>
+            </Grid>
+        </Border>
+
+        <!-- ═══ ROW 5: Event Log ══════════════════════════════════════════════ -->
+        <Border Grid.Row="5" Style="{StaticResource SectionBorder}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox Content="Log Raw Firmware Messages"
+                              IsChecked="{Binding LogRaw}" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" Text="Program Event Output"
+                               FontWeight="SemiBold" HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="2" Content="Clear"
+                            Command="{Binding ClearLogCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Height="26" Padding="8,0" Margin="8,0,0,0"/>
+                </Grid>
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              x:Name="LogScrollViewer">
+                    <TextBox Text="{Binding EventLog, Mode=OneWay}"
+                             IsReadOnly="True"
+                             Background="Transparent" BorderThickness="0"
+                             Foreground="#CCCCCC"
+                             FontFamily="Consolas" FontSize="11"
+                             TextWrapping="Wrap"
+                             MinHeight="100"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+    </Grid>
+</Window>
