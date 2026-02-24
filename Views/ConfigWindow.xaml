@@ -299,6 +299,16 @@
 
                 <!-- Send / Stop buttons + stats -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <!-- Response timeout field -->
+                    <TextBlock Text="Response Timeout (ms)" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,2"/>
+                    <TextBox Text="{Binding LbTimeoutText, UpdateSourceTrigger=PropertyChanged}"
+                             Foreground="White" CaretBrush="White"
+                             md:HintAssist.Hint="default 2000"
+                             md:HintAssist.Foreground="#AAAAAA"
+                             Height="32" Margin="0,0,0,2"/>
+                    <TextBlock Text="{Binding LbTimeoutError}" Foreground="#FF5555"
+                               FontSize="9" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <!-- Status -->
                     <TextBlock Text="Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,2"/>
                     <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,4">
                         <TextBlock Text="{Binding LoopbackSendStatus}" Foreground="White"

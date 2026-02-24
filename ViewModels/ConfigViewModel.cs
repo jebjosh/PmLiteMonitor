@@ -99,7 +99,9 @@ public partial class ConfigViewModel : ObservableObject
     [ObservableProperty] private int    _lbSent;       // how many were sent
     [ObservableProperty] private int    _lbPassCount;  // how many echoed back correctly
     [ObservableProperty] private int    _lbFailCount;  // how many mismatched or timed out
-    [ObservableProperty] private string _lbStats = string.Empty;
+    [ObservableProperty] private string _lbStats           = string.Empty;
+    [ObservableProperty] private string _lbTimeoutText     = string.Empty;  // blank/0 → default 2000ms
+    [ObservableProperty] private string _lbTimeoutError    = string.Empty;
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public ConfigViewModel(TcpMessageClient client, MainViewModel mainVm)
@@ -170,6 +172,16 @@ public partial class ConfigViewModel : ObservableObject
 
     // Returns an error string or empty if valid.
     // Used both for the error label binding and for CanExecute checks.
+    partial void OnLbTimeoutTextChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Trim() == "0")
+            LbTimeoutError = string.Empty;  // blank/0 is fine — uses default
+        else if (int.TryParse(value.Trim(), out int ms) && ms > 0)
+            LbTimeoutError = string.Empty;
+        else
+            LbTimeoutError = "Enter a positive number (ms), or leave blank for 2000ms default";
+    }
+
     private static string ByteError(string text, string field)
         => TryParseByte(text, out _) ? string.Empty : $"{field}: enter 0–255 or hex 00–FF";
 
@@ -224,7 +236,19 @@ public partial class ConfigViewModel : ObservableObject
     // the TCP receive loop uses. It calls TrySetResult on the TCS that the
     // send loop is awaiting — bridging the two threads safely.
 
-    private const int ResponseTimeoutMs = 2000;  // how long to wait for each echo
+    private const int DefaultTimeoutMs = 2000;
+
+    /// <summary>
+    /// Returns the timeout in ms to use for this run.
+    /// If LbTimeoutText is blank, "0", or not a valid positive integer → DefaultTimeoutMs.
+    /// Otherwise uses whatever the user typed.
+    /// </summary>
+    private int GetResponseTimeout()
+    {
+        if (string.IsNullOrWhiteSpace(LbTimeoutText)) return DefaultTimeoutMs;
+        if (int.TryParse(LbTimeoutText.Trim(), out int ms) && ms > 0) return ms;
+        return DefaultTimeoutMs;
+    }
 
     [RelayCommand(CanExecute = nameof(CanSendLoopback))]
     private async Task SendLoopbackAsync()
@@ -251,15 +275,29 @@ public partial class ConfigViewModel : ObservableObject
         SendLoopbackCommand.NotifyCanExecuteChanged();
         StopLoopbackCommand.NotifyCanExecuteChanged();
 
+        // 255 = infinite mode — runs until Stop is pressed
+        // 1–254 = countdown mode — sends exactly totalCount messages then stops
+        // 0 = single send (one message with count=0)
+        bool infinite = totalCount == 255;
+
+        if (infinite)
+        {
+            LbCountRemaining   = "∞  infinite mode";
+            LoopbackSendStatus = "Infinite — press Stop to end";
+        }
+
         try
         {
-            for (byte remaining = totalCount; ; remaining--)
+            // In countdown mode: remaining counts DOWN from totalCount to 0.
+            // In infinite mode:  remaining is always 255 (the value sent each time)
+            //                    and the loop only exits via cancellation.
+            byte remaining = totalCount;
+
+            while (true)
             {
                 _loopbackCts.Token.ThrowIfCancellationRequested();
 
                 // ── 1. Arm the TCS BEFORE sending so we never miss the response ──
-                // If we armed it after sending, a very fast server could reply
-                // before we're listening and the response would be lost.
                 _loopbackResponseTcs = new TaskCompletionSource<LoopbackMessage>(
                     TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -269,21 +307,24 @@ public partial class ConfigViewModel : ObservableObject
                     _loopbackCts.Token);
                 LbSent++;
 
-                LbCountRemaining   = remaining == 0 ? "Waiting for final echo…"
-                                                    : $"{remaining} remaining — waiting for echo…";
+                if (infinite)
+                    LbCountRemaining = $"∞  #{LbSent} sent — waiting for echo…";
+                else
+                    LbCountRemaining = remaining == 0
+                        ? "Waiting for final echo…"
+                        : $"{remaining} remaining — waiting for echo…";
+
                 LoopbackSendStatus = $"Sent #{LbSent} (count={remaining}) — awaiting response";
 
                 // ── 3. Await echo with timeout ────────────────────────────────────
-                // Task.WhenAny lets us race the TCS against a timeout task.
-                // We also register the cancellation token so Stop() unblocks us.
                 using var timeoutCts = CancellationTokenSource
                     .CreateLinkedTokenSource(_loopbackCts.Token);
-                timeoutCts.CancelAfter(ResponseTimeoutMs);
+                int responseTimeoutMs = GetResponseTimeout();
+                timeoutCts.CancelAfter(responseTimeoutMs);
 
                 LoopbackMessage? response = null;
                 try
                 {
-                    // Register cancellation so the TCS task unblocks when stopped
                     timeoutCts.Token.Register(() =>
                         _loopbackResponseTcs?.TrySetCanceled());
 
@@ -291,16 +332,20 @@ public partial class ConfigViewModel : ObservableObject
                 }
                 catch (OperationCanceledException)
                 {
-                    // Check if it was our main stop token or just the timeout
                     _loopbackCts.Token.ThrowIfCancellationRequested();
 
                     // Timeout — count as fail and continue
                     LbFailCount++;
                     LbStats = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
                     AppendDebug($"LB #{LbSent}: TIMEOUT (count={remaining})");
-                    LoopbackSendStatus = $"#{LbSent} timed out after {ResponseTimeoutMs}ms";
+                    LoopbackSendStatus = $"#{LbSent} timed out after {responseTimeoutMs}ms";
 
-                    if (remaining == 0) break;
+                    // Countdown: still need to decrement and check end condition
+                    if (!infinite)
+                    {
+                        if (remaining == 0) break;
+                        remaining--;
+                    }
                     continue;
                 }
                 finally
@@ -309,7 +354,6 @@ public partial class ConfigViewModel : ObservableObject
                 }
 
                 // ── 4. Compare echoed fields against what was sent ─────────────────
-                // Count field echoes the remaining value we sent, not totalCount
                 bool countMatch = response.Count == remaining;
                 bool d0Match    = response.Data0 == d0;
                 bool d1Match    = response.Data1 == d1;
@@ -330,14 +374,28 @@ public partial class ConfigViewModel : ObservableObject
                             $"d2=0x{response.Data2:X2}({(d2Match?"✔":"✗")}) " +
                             $"d3=0x{response.Data3:X2}({(d3Match?"✔":"✗")})");
 
-                if (remaining == 0) break;
+                // ── 5. Advance or exit ────────────────────────────────────────────
+                if (infinite)
+                {
+                    // Infinite mode — never exit, remaining stays 255
+                    // (yield to keep UI responsive between iterations)
+                    await Task.Yield();
+                }
+                else
+                {
+                    if (remaining == 0) break;  // countdown finished
+                    remaining--;
+                }
             }
 
-            // ── Final summary ─────────────────────────────────────────────────
-            LbCountRemaining   = "Done";
-            LoopbackSendStatus = $"Complete — {LbPassCount}/{LbSent} passed";
-            LbStats            = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
-            AppendDebug($"Loopback complete — {LbPassCount}/{LbSent} passed, {LbFailCount} failed");
+            // ── Final summary (countdown only — infinite ends via cancellation) ──
+            if (!infinite)
+            {
+                LbCountRemaining   = "Done";
+                LoopbackSendStatus = $"Complete — {LbPassCount}/{LbSent} passed";
+                LbStats            = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
+                AppendDebug($"Loopback complete — {LbPassCount}/{LbSent} passed, {LbFailCount} failed");
+            }
         }
         catch (OperationCanceledException)
         {
