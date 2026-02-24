@@ -297,16 +297,21 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Send / Stop buttons + countdown -->
+                <!-- Send / Stop buttons + stats -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <TextBlock Text="Send Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
+                    <TextBlock Text="Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,2"/>
                     <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,4">
-                        <TextBlock Text="{Binding LoopbackSendStatus}" Foreground="White" FontSize="11"/>
+                        <TextBlock Text="{Binding LoopbackSendStatus}" Foreground="White"
+                                   FontSize="11" TextWrapping="Wrap"/>
                     </Border>
-                    <!-- Countdown display — visible while running -->
+                    <!-- Countdown / result -->
                     <TextBlock Text="{Binding LbCountRemaining}"
                                Foreground="#90CAF9" FontSize="11" FontWeight="Bold"
-                               Margin="0,0,0,6"/>
+                               Margin="0,0,0,2"/>
+                    <!-- Pass / Fail / Sent counters -->
+                    <Border CornerRadius="3" Padding="8,3" Background="#1A1A1A" Margin="0,0,0,6">
+                        <TextBlock Text="{Binding LbStats}" Foreground="#AAAAAA" FontSize="10"/>
+                    </Border>
                     <Button Content="Send"
                             Command="{Binding SendLoopbackCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}"

@@ -87,8 +87,19 @@ public partial class ConfigViewModel : ObservableObject
     // ── Debug output ──────────────────────────────────────────────────────────
     [ObservableProperty] private string _debugOutput = string.Empty;
 
-    // ── Loopback countdown cancellation ──────────────────────────────────────
-    private CancellationTokenSource? _loopbackCts;
+    // ── Loopback state ────────────────────────────────────────────────────────
+    private CancellationTokenSource?               _loopbackCts;
+
+    // TCS used to hand a received LoopbackMessage back to the waiting send loop.
+    // The loop sets this before each send, then awaits its Task.
+    // ApplyLoopback calls TrySetResult() to unblock the loop.
+    private TaskCompletionSource<LoopbackMessage>? _loopbackResponseTcs;
+
+    // Per-run statistics shown in the UI
+    [ObservableProperty] private int    _lbSent;       // how many were sent
+    [ObservableProperty] private int    _lbPassCount;  // how many echoed back correctly
+    [ObservableProperty] private int    _lbFailCount;  // how many mismatched or timed out
+    [ObservableProperty] private string _lbStats = string.Empty;
 
     // ── Constructor ───────────────────────────────────────────────────────────
     public ConfigViewModel(TcpMessageClient client, MainViewModel mainVm)
@@ -202,7 +213,18 @@ public partial class ConfigViewModel : ObservableObject
         ConnectCommand.NotifyCanExecuteChanged();
     }
 
-    // ── Loopback countdown ────────────────────────────────────────────────────
+    // ── Loopback request-response loop ───────────────────────────────────────
+    // Each iteration:
+    //   1. Send LoopbackMessage with current remaining count
+    //   2. Await the server's echo (up to ResponseTimeoutMs)
+    //   3. Compare every field — count as pass or fail
+    //   4. Decrement remaining and repeat
+    //
+    // ApplyLoopback is called by the MainViewModel event on whatever thread
+    // the TCP receive loop uses. It calls TrySetResult on the TCS that the
+    // send loop is awaiting — bridging the two threads safely.
+
+    private const int ResponseTimeoutMs = 2000;  // how long to wait for each echo
 
     [RelayCommand(CanExecute = nameof(CanSendLoopback))]
     private async Task SendLoopbackAsync()
@@ -217,37 +239,109 @@ public partial class ConfigViewModel : ObservableObject
             return;
         }
 
+        // Reset statistics for this run
+        LbSent      = 0;
+        LbPassCount = 0;
+        LbFailCount = 0;
+        LbStats     = string.Empty;
+
         _loopbackCts      = new CancellationTokenSource();
         IsLoopbackRunning = true;
-        LoopbackSendStatus = $"Sending — {totalCount} remaining";
+        LoopbackSendStatus = $"Waiting for echo…";
         SendLoopbackCommand.NotifyCanExecuteChanged();
         StopLoopbackCommand.NotifyCanExecuteChanged();
 
         try
         {
-            // Count byte is the current remaining value in each frame.
-            // Loop counts DOWN from totalCount to 0 inclusive.
             for (byte remaining = totalCount; ; remaining--)
             {
                 _loopbackCts.Token.ThrowIfCancellationRequested();
 
+                // ── 1. Arm the TCS BEFORE sending so we never miss the response ──
+                // If we armed it after sending, a very fast server could reply
+                // before we're listening and the response would be lost.
+                _loopbackResponseTcs = new TaskCompletionSource<LoopbackMessage>(
+                    TaskCreationOptions.RunContinuationsAsynchronously);
+
+                // ── 2. Send ───────────────────────────────────────────────────────
                 await _client.SendAsync(
                     new LoopbackMessage(remaining, d0, d1, d2, d3),
                     _loopbackCts.Token);
+                LbSent++;
 
-                LbCountRemaining   = remaining == 0 ? "Done" : $"{remaining} remaining";
-                LoopbackSendStatus = remaining == 0 ? $"Complete — {totalCount} sent ✔"
-                                                    : $"Sending — {remaining} remaining";
+                LbCountRemaining   = remaining == 0 ? "Waiting for final echo…"
+                                                    : $"{remaining} remaining — waiting for echo…";
+                LoopbackSendStatus = $"Sent #{LbSent} (count={remaining}) — awaiting response";
+
+                // ── 3. Await echo with timeout ────────────────────────────────────
+                // Task.WhenAny lets us race the TCS against a timeout task.
+                // We also register the cancellation token so Stop() unblocks us.
+                using var timeoutCts = CancellationTokenSource
+                    .CreateLinkedTokenSource(_loopbackCts.Token);
+                timeoutCts.CancelAfter(ResponseTimeoutMs);
+
+                LoopbackMessage? response = null;
+                try
+                {
+                    // Register cancellation so the TCS task unblocks when stopped
+                    timeoutCts.Token.Register(() =>
+                        _loopbackResponseTcs?.TrySetCanceled());
+
+                    response = await _loopbackResponseTcs.Task;
+                }
+                catch (OperationCanceledException)
+                {
+                    // Check if it was our main stop token or just the timeout
+                    _loopbackCts.Token.ThrowIfCancellationRequested();
+
+                    // Timeout — count as fail and continue
+                    LbFailCount++;
+                    LbStats = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
+                    AppendDebug($"LB #{LbSent}: TIMEOUT (count={remaining})");
+                    LoopbackSendStatus = $"#{LbSent} timed out after {ResponseTimeoutMs}ms";
+
+                    if (remaining == 0) break;
+                    continue;
+                }
+                finally
+                {
+                    _loopbackResponseTcs = null;
+                }
+
+                // ── 4. Compare echoed fields against what was sent ─────────────────
+                // Count field echoes the remaining value we sent, not totalCount
+                bool countMatch = response.Count == remaining;
+                bool d0Match    = response.Data0 == d0;
+                bool d1Match    = response.Data1 == d1;
+                bool d2Match    = response.Data2 == d2;
+                bool d3Match    = response.Data3 == d3;
+                bool allMatch   = countMatch && d0Match && d1Match && d2Match && d3Match;
+
+                if (allMatch) LbPassCount++;
+                else          LbFailCount++;
+
+                LbStats = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
+
+                string result = allMatch ? "PASS ✔" : "FAIL ✗";
+                LoopbackSendStatus = $"#{LbSent} {result}  |  {LbStats}";
+                AppendDebug($"LB #{LbSent} {result}: cnt={response.Count}({(countMatch?"✔":"✗")}) " +
+                            $"d0=0x{response.Data0:X2}({(d0Match?"✔":"✗")}) " +
+                            $"d1=0x{response.Data1:X2}({(d1Match?"✔":"✗")}) " +
+                            $"d2=0x{response.Data2:X2}({(d2Match?"✔":"✗")}) " +
+                            $"d3=0x{response.Data3:X2}({(d3Match?"✔":"✗")})");
 
                 if (remaining == 0) break;
-
-                // 50 ms gap between sends — adjust if firmware needs more time
-                await Task.Delay(50, _loopbackCts.Token);
             }
+
+            // ── Final summary ─────────────────────────────────────────────────
+            LbCountRemaining   = "Done";
+            LoopbackSendStatus = $"Complete — {LbPassCount}/{LbSent} passed";
+            LbStats            = $"Pass: {LbPassCount}  Fail: {LbFailCount}  Sent: {LbSent}";
+            AppendDebug($"Loopback complete — {LbPassCount}/{LbSent} passed, {LbFailCount} failed");
         }
         catch (OperationCanceledException)
         {
-            LoopbackSendStatus = "Stopped by user";
+            LoopbackSendStatus = $"Stopped — {LbPassCount}/{LbSent} passed";
             LbCountRemaining   = string.Empty;
         }
         catch (Exception ex)
@@ -256,7 +350,8 @@ public partial class ConfigViewModel : ObservableObject
         }
         finally
         {
-            IsLoopbackRunning = false;
+            _loopbackResponseTcs = null;
+            IsLoopbackRunning    = false;
             _loopbackCts?.Dispose();
             _loopbackCts = null;
             SendLoopbackCommand.NotifyCanExecuteChanged();
@@ -279,16 +374,15 @@ public partial class ConfigViewModel : ObservableObject
 
     private void ApplyLoopback(LoopbackMessage lb)
     {
+        // ── Always update the received row and compare icons ──────────────────
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
         {
-            // Show received values in hex for easy comparison
             LbRxCount = lb.Count.ToString();
             LbRxData0 = $"0x{lb.Data0:X2}";
             LbRxData1 = $"0x{lb.Data1:X2}";
             LbRxData2 = $"0x{lb.Data2:X2}";
             LbRxData3 = $"0x{lb.Data3:X2}";
 
-            // Compare received against what was sent
             TryParseByte(LbCountText, out byte sc);
             TryParseByte(LbData0Text, out byte s0);
             TryParseByte(LbData1Text, out byte s1);
@@ -300,11 +394,12 @@ public partial class ConfigViewModel : ObservableObject
             CmpData1Icon = lb.Data1 == s1 ? IconState.Green : IconState.Red;
             CmpData2Icon = lb.Data2 == s2 ? IconState.Green : IconState.Red;
             CmpData3Icon = lb.Data3 == s3 ? IconState.Green : IconState.Red;
-
-            AppendDebug($"LB RX: cnt={lb.Count} " +
-                        $"d0=0x{lb.Data0:X2} d1=0x{lb.Data1:X2} " +
-                        $"d2=0x{lb.Data2:X2} d3=0x{lb.Data3:X2}");
         });
+
+        // ── Unblock the send loop if it is waiting for this response ──────────
+        // TrySetResult is thread-safe and a no-op if the TCS is already completed.
+        // This means stray loopback messages received outside a run are harmless.
+        _loopbackResponseTcs?.TrySetResult(lb);
     }
 
     // ── Config Message ────────────────────────────────────────────────────────
