@@ -45,3 +45,23 @@ public class RecordingLabelConverter : IValueConverter
     public object ConvertBack(object v, Type t, object p, CultureInfo c) =>
         throw new NotImplementedException();
 }
+
+/// <summary>true → Visible, false → Collapsed</summary>
+public class BoolToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type t, object p, CultureInfo c) =>
+        value is true ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+    public object ConvertBack(object v, Type t, object p, CultureInfo c) =>
+        throw new NotImplementedException();
+}
+
+/// <summary>Non-empty string → Visible, null/empty → Collapsed  (used for error labels)</summary>
+public class StringToVisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type t, object p, CultureInfo c) =>
+        string.IsNullOrEmpty(value as string)
+            ? System.Windows.Visibility.Collapsed
+            : System.Windows.Visibility.Visible;
+    public object ConvertBack(object v, Type t, object p, CultureInfo c) =>
+        throw new NotImplementedException();
+}

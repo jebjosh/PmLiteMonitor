@@ -86,33 +86,46 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto" MinWidth="90"/>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto" MinWidth="120"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,6,0">
                         <TextBlock Text="IP Address" FontSize="10" Foreground="#AAAAAA"/>
-                        <TextBox Text="{Binding IpAddress}"
+                        <TextBox Text="{Binding IpAddress, UpdateSourceTrigger=PropertyChanged}"
                                  Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="IP Address"
+                                 md:HintAssist.Hint="10.0.0.1"
                                  md:HintAssist.Foreground="#AAAAAA"
                                  Height="36"/>
+                        <TextBlock Text="{Binding IpError}" Foreground="#FF5555" FontSize="10"
+                                   TextWrapping="Wrap" Margin="0,2,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,6,0">
                         <TextBlock Text="Port Number" FontSize="10" Foreground="#AAAAAA"/>
-                        <TextBox Text="{Binding PortText}"
+                        <TextBox Text="{Binding PortText, UpdateSourceTrigger=PropertyChanged}"
                                  Foreground="White" CaretBrush="White"
                                  md:HintAssist.Hint="1024"
                                  md:HintAssist.Foreground="#AAAAAA"
                                  Height="36"/>
+                        <TextBlock Text="{Binding PortError}" Foreground="#FF5555" FontSize="10"
+                                   Margin="0,2,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,8,0" VerticalAlignment="Bottom">
                         <TextBlock Text="Connection Status" FontSize="10" Foreground="#AAAAAA"/>
                         <ctrl:StatusIcon State="{Binding ConnIconState}" Margin="0,4,0,0"/>
                     </StackPanel>
-                    <Button Grid.Column="3" Content="Connect To Firmware"
-                            Command="{Binding ConnectCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
-                            Background="#1B5E20" Foreground="White"
-                            VerticalAlignment="Bottom" Padding="12,8"/>
+                    <StackPanel Grid.Column="3" VerticalAlignment="Bottom" Margin="6,0,0,0">
+                        <Button Content="Connect"
+                                Command="{Binding ConnectCommand}"
+                                IsEnabled="{Binding IsConnected, Converter={StaticResource InverseBoolConverter}}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="#1B5E20" Foreground="White"
+                                Padding="12,6" Margin="0,0,0,4"/>
+                        <Button Content="Disconnect"
+                                Command="{Binding DisconnectCommand}"
+                                IsEnabled="{Binding IsConnected}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="#B71C1C" Foreground="White"
+                                Padding="12,6"/>
+                    </StackPanel>
                 </Grid>
                 <TextBlock Text="{Binding ConnectionStatus}"
                            FontSize="10" Foreground="#AAAAAA" Margin="0,4,0,0"/>
@@ -223,31 +236,41 @@
                         <!-- Sent row — editable TextBoxes -->
                         <TextBlock Grid.Row="1" Text="Sent"
                                    VerticalAlignment="Center" FontSize="11" Foreground="#AAAAAA"/>
-                        <TextBox Grid.Row="1" Grid.Column="1"
-                                 Text="{Binding LbCountText, UpdateSourceTrigger=PropertyChanged}"
-                                 Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
-                                 Margin="2" Height="32"/>
-                        <TextBox Grid.Row="1" Grid.Column="2"
-                                 Text="{Binding LbData0Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
-                                 Margin="2" Height="32"/>
-                        <TextBox Grid.Row="1" Grid.Column="3"
-                                 Text="{Binding LbData1Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
-                                 Margin="2" Height="32"/>
-                        <TextBox Grid.Row="1" Grid.Column="4"
-                                 Text="{Binding LbData2Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
-                                 Margin="2" Height="32"/>
-                        <TextBox Grid.Row="1" Grid.Column="5"
-                                 Text="{Binding LbData3Text, UpdateSourceTrigger=PropertyChanged}"
-                                 Foreground="White" CaretBrush="White"
-                                 md:HintAssist.Hint="0" md:HintAssist.Foreground="#AAAAAA"
-                                 Margin="2" Height="32"/>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="2">
+                            <TextBox Text="{Binding LbCountText, UpdateSourceTrigger=PropertyChanged}"
+                                     Foreground="White" CaretBrush="White"
+                                     md:HintAssist.Hint="0–255" md:HintAssist.Foreground="#AAAAAA"
+                                     Height="32"/>
+                            <TextBlock Text="{Binding LbCountError}" Foreground="#FF5555" FontSize="9"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="2">
+                            <TextBox Text="{Binding LbData0Text, UpdateSourceTrigger=PropertyChanged}"
+                                     Foreground="White" CaretBrush="White"
+                                     md:HintAssist.Hint="0x00" md:HintAssist.Foreground="#AAAAAA"
+                                     Height="32"/>
+                            <TextBlock Text="{Binding LbData0Error}" Foreground="#FF5555" FontSize="9"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="3" Margin="2">
+                            <TextBox Text="{Binding LbData1Text, UpdateSourceTrigger=PropertyChanged}"
+                                     Foreground="White" CaretBrush="White"
+                                     md:HintAssist.Hint="0x00" md:HintAssist.Foreground="#AAAAAA"
+                                     Height="32"/>
+                            <TextBlock Text="{Binding LbData1Error}" Foreground="#FF5555" FontSize="9"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="4" Margin="2">
+                            <TextBox Text="{Binding LbData2Text, UpdateSourceTrigger=PropertyChanged}"
+                                     Foreground="White" CaretBrush="White"
+                                     md:HintAssist.Hint="0x00" md:HintAssist.Foreground="#AAAAAA"
+                                     Height="32"/>
+                            <TextBlock Text="{Binding LbData2Error}" Foreground="#FF5555" FontSize="9"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="5" Margin="2">
+                            <TextBox Text="{Binding LbData3Text, UpdateSourceTrigger=PropertyChanged}"
+                                     Foreground="White" CaretBrush="White"
+                                     md:HintAssist.Hint="0x00" md:HintAssist.Foreground="#AAAAAA"
+                                     Height="32"/>
+                            <TextBlock Text="{Binding LbData3Error}" Foreground="#FF5555" FontSize="9"/>
+                        </StackPanel>
 
                         <!-- Received row -->
                         <TextBlock Grid.Row="2" Text="Received"
@@ -274,16 +297,24 @@
                     </Grid>
                 </StackPanel>
 
-                <!-- Send button -->
+                <!-- Send / Stop buttons + countdown -->
                 <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                     <TextBlock Text="Send Status" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,4"/>
-                    <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,8">
+                    <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,4">
                         <TextBlock Text="{Binding LoopbackSendStatus}" Foreground="White" FontSize="11"/>
                     </Border>
+                    <!-- Countdown display — visible while running -->
+                    <TextBlock Text="{Binding LbCountRemaining}"
+                               Foreground="#90CAF9" FontSize="11" FontWeight="Bold"
+                               Margin="0,0,0,6"/>
                     <Button Content="Send"
                             Command="{Binding SendLoopbackCommand}"
                             Style="{StaticResource MaterialDesignRaisedButton}"
-                            Foreground="White" Padding="20,8"/>
+                            Foreground="White" Padding="20,8" Margin="0,0,0,4"/>
+                    <Button Content="Stop"
+                            Command="{Binding StopLoopbackCommand}"
+                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Background="#B71C1C" Foreground="White" Padding="20,8"/>
                 </StackPanel>
             </Grid>
         </Border>

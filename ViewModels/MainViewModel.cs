@@ -161,6 +161,7 @@ public partial class MainViewModel : ObservableObject
 
         Client.OnMessageReceived += OnMessageReceived;
         Client.OnWarning         += msg => AppendLog($"[WARN]  {msg}");
+        Client.OnSent            += msg => AppendLog(msg);
         Client.OnError           += ex  => AppendLog($"[ERROR] {ex.Message}");
         Client.OnDisconnected    += ()  =>
         {

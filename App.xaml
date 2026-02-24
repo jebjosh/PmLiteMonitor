@@ -18,6 +18,8 @@
             <local:BoolToIconStateConverter x:Key="BoolToIconConverter" />
             <local:InverseBoolConverter x:Key="InverseBoolConverter" />
             <local:RecordingLabelConverter x:Key="RecordingLabelConverter" />
+            <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter" />
 
             <!-- Section border -->
             <Style x:Key="SectionBorder" TargetType="Border">

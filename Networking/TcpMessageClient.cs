@@ -15,6 +15,7 @@ public class TcpMessageClient : IAsyncDisposable
 
     public event Action<IMessage>?  OnMessageReceived;
     public event Action<string>?    OnWarning;
+    public event Action<string>?    OnSent;       // fires with hex dump of every outgoing frame
     public event Action<Exception>? OnError;
     public event Action?            OnDisconnected;
 
@@ -35,6 +36,12 @@ public class TcpMessageClient : IAsyncDisposable
     {
         if (_stream is null) throw new InvalidOperationException("Not connected.");
         byte[] frame = message.ToBytes();
+
+        // Log every outgoing frame so you can verify the exact bytes sent
+        string typeName = message.GetType().Name.Replace("Message", "");
+        string hex      = BitConverter.ToString(frame).Replace("-", " ");
+        OnSent?.Invoke($"[TX] {typeName} | {frame.Length} bytes | {hex}");
+
         await _sendLock.WaitAsync(ct);
         try   { await _stream.WriteAsync(frame, ct); }
         finally { _sendLock.Release(); }

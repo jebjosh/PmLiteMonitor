@@ -229,8 +229,17 @@ public class LoopbackMessage : BaseMessage
 
 // ── 8: ConfigurationMessage ──────────────────────────────────────────────────
 /// <summary>
-/// Content layout: [pacFlight][pacMissile][termSafed][termArmed][dudOverride][reset]
-/// Each byte is 0 or 1.
+/// Wire format: [type=8][size=5 low][size=5 high][reserved=0][flags]
+///                                                            ^^^^^^^
+///                                                            content[1] — packed bits:
+///   bit 0 = PacFlight
+///   bit 1 = PacMissile
+///   bit 2 = TermSafed
+///   bit 3 = TermArmed
+///   bit 4 = DudOverride
+///   bit 5 = Reset
+///   bit 6 = unused
+///   bit 7 = unused
 /// </summary>
 public class ConfigurationMessage : BaseMessage
 {
@@ -241,23 +250,75 @@ public class ConfigurationMessage : BaseMessage
     public bool DudOverride { get; }
     public bool Reset       { get; }
 
+    // Bit positions — change these if your firmware uses different positions
+    private const int BitPacFlight   = 0;
+    private const int BitPacMissile  = 1;
+    private const int BitTermSafed   = 2;
+    private const int BitTermArmed   = 3;
+    private const int BitDudOverride = 4;
+    private const int BitReset       = 5;
+
+    /// <summary>Receive constructor — unpacks bits from content[1]</summary>
     public ConfigurationMessage(ushort size, byte[] content) : base()
     {
-        MessageType = MessageTypes.Configuration; Size = size; RawData = content;
-        if (content.Length >= 6)
+        MessageType = MessageTypes.Configuration;
+        Size        = size;
+        RawData     = content;
+
+        if (content.Length >= 2)
         {
-            PacFlight   = content[0] != 0;
-            PacMissile  = content[1] != 0;
-            TermSafed   = content[2] != 0;
-            TermArmed   = content[3] != 0;
-            DudOverride = content[4] != 0;
-            Reset       = content[5] != 0;
+            byte flags = content[1];   // content[0] is reserved
+            PacFlight   = (flags & (1 << BitPacFlight))   != 0;
+            PacMissile  = (flags & (1 << BitPacMissile))  != 0;
+            TermSafed   = (flags & (1 << BitTermSafed))   != 0;
+            TermArmed   = (flags & (1 << BitTermArmed))   != 0;
+            DudOverride = (flags & (1 << BitDudOverride)) != 0;
+            Reset       = (flags & (1 << BitReset))       != 0;
         }
     }
-    public ConfigurationMessage(bool pacF, bool pacM, bool termS, bool termA, bool dud, bool reset)
-        : base(MessageTypes.Configuration, new byte[]
-        { (byte)(pacF?1:0),(byte)(pacM?1:0),(byte)(termS?1:0),(byte)(termA?1:0),(byte)(dud?1:0),(byte)(reset?1:0) })
-    { PacFlight=pacF; PacMissile=pacM; TermSafed=termS; TermArmed=termA; DudOverride=dud; Reset=reset; }
+
+    /// <summary>Send constructor — packs booleans into bits of content[1]</summary>
+    public ConfigurationMessage(bool pacFlight, bool pacMissile,
+                                bool termSafed, bool termArmed,
+                                bool dudOverride, bool reset)
+        : base(MessageTypes.Configuration, BuildContent(pacFlight, pacMissile,
+                                                        termSafed, termArmed,
+                                                        dudOverride, reset))
+    {
+        PacFlight   = pacFlight;
+        PacMissile  = pacMissile;
+        TermSafed   = termSafed;
+        TermArmed   = termArmed;
+        DudOverride = dudOverride;
+        Reset       = reset;
+    }
+
+    /// <summary>
+    /// Builds the 2-byte content array.
+    /// content[0] = 0x00 (reserved)
+    /// content[1] = packed bit flags
+    /// </summary>
+    private static byte[] BuildContent(bool pacFlight, bool pacMissile,
+                                       bool termSafed, bool termArmed,
+                                       bool dudOverride, bool reset)
+    {
+        byte flags = 0;
+
+        // OR each bool into its bit position using left shift
+        // false booleans contribute 0 so the OR leaves that bit untouched
+        if (pacFlight)   flags |= (byte)(1 << BitPacFlight);
+        if (pacMissile)  flags |= (byte)(1 << BitPacMissile);
+        if (termSafed)   flags |= (byte)(1 << BitTermSafed);
+        if (termArmed)   flags |= (byte)(1 << BitTermArmed);
+        if (dudOverride) flags |= (byte)(1 << BitDudOverride);
+        if (reset)       flags |= (byte)(1 << BitReset);
+
+        return new byte[]
+        {
+            0x00,   // content[0] — reserved byte
+            flags   // content[1] — packed flags
+        };
+    }
 }
 
 // ── 9: NullMessage ───────────────────────────────────────────────────────────
