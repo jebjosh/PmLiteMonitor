@@ -60,80 +60,87 @@ public class TelemetryRecorder
     /// <summary>Call this for every TelemetryMessage received from the TCP client.</summary>
     public void Feed(TelemetryMessage msg)
     {
-        var ts    = DateTime.Now;
-        var frame = msg.ToBytes();
+        var ts = DateTime.Now;
+
+        // Lazily serialize to bytes — only do the allocation if we're actually
+        // going to store this frame (recording or pre-buffer maintenance).
+        // Captured in a local so the closure below doesn't hold msg alive.
+        byte[] GetFrame() => msg.ToBytes();
+
+        // statusMsg is set inside the lock if a state transition happens.
+        // We fire the event AFTER releasing the lock — never while holding it.
+        // Firing events inside a lock risks deadlock if the handler tries to
+        // acquire the same lock or calls Dispatcher.Invoke.
+        string? statusMsg = null;
 
         lock (_lock)
         {
-            // --- always push into the pre-buffer circular queue ---
-            _preBuffer.Enqueue((ts, frame));
+            // Always maintain the pre-buffer so we have the 100ms window ready
+            _preBuffer.Enqueue((ts, GetFrame()));
             PrunePreBuffer(ts);
 
-            // --- MRS rising edge ---
+            // MRS rising edge — start recording
             if (msg.MrsOn && !_lastMrsOn && !_recording)
             {
-                _recording   = true;
-                _mrsOnTime   = ts;
-                _postBuffer  = new List<(DateTime, byte[])>();
+                _recording  = true;
+                _mrsOnTime  = ts;
+                _postBuffer = new List<(DateTime, byte[])>();
 
-                // Snapshot the pre-buffer NOW at the moment of MRS ON
-                // so we get the 100ms before, not 100ms before the 4-second mark
+                // Snapshot pre-buffer at the exact moment of MRS ON
                 _preSnapshot = _preBuffer.ToArray();
 
-                OnStatusMessage?.Invoke($"MRS ON detected at {ts:HH:mm:ss.fff} — recording started.");
+                // Queue the status string — fire it after the lock releases
+                statusMsg = $"MRS ON detected at {ts:HH:mm:ss.fff} — recording started.";
 
-                // Start a timer that checks every 100ms whether 4 seconds has elapsed.
-                // This fires independently of incoming messages so recording always stops.
                 _stopTimer = new System.Threading.Timer(
-                    CheckStopTimer,
-                    state: null,
-                    dueTime:  100,
-                    period:   100);
+                    CheckStopTimer, null, dueTime: 100, period: 100);
             }
 
             _lastMrsOn = msg.MrsOn;
 
-            // --- accumulate post-MRS data ---
+            // Accumulate post-MRS frames
             if (_recording && _postBuffer is not null)
-            {
-                _postBuffer.Add((ts, frame));
-            }
+                _postBuffer.Add((ts, GetFrame()));
         }
+        // ── Lock released — safe to invoke events now ─────────────────────────
+        if (statusMsg is not null)
+            OnStatusMessage?.Invoke(statusMsg);
     }
 
     // ── Timer callback ───────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Called every 100ms by the timer. Stops recording once 4 seconds
-    /// have elapsed since MRS ON, regardless of whether messages are arriving.
-    /// </summary>
     private void CheckStopTimer(object? state)
     {
+        // Capture everything we need inside the lock, then act outside it
+        (DateTime ts, byte[] frame)[]? pre         = null;
+        (DateTime ts, byte[] frame)[]? post        = null;
+        DateTime                        captureTime = default;
+        bool                            shouldWrite = false;
+
         lock (_lock)
         {
             if (!_recording) return;
 
-            if ((DateTime.Now - _mrsOnTime).TotalMilliseconds >= PostWindowMs)
-            {
-                // Stop the timer first
-                _stopTimer?.Dispose();
-                _stopTimer = null;
+            if ((DateTime.Now - _mrsOnTime).TotalMilliseconds < PostWindowMs) return;
 
-                // Capture snapshots and clear recording state
-                var pre         = _preSnapshot  ?? Array.Empty<(DateTime, byte[])>();
-                var post        = _postBuffer?.ToArray() ?? Array.Empty<(DateTime, byte[])>();
-                var captureTime = _mrsOnTime;
+            // 4 seconds elapsed — grab snapshots and reset state
+            _stopTimer?.Dispose();
+            _stopTimer = null;
 
-                _recording   = false;
-                _postBuffer  = null;
-                _preSnapshot = null;
+            pre         = _preSnapshot ?? Array.Empty<(DateTime, byte[])>();
+            post        = _postBuffer?.ToArray() ?? Array.Empty<(DateTime, byte[])>();
+            captureTime = _mrsOnTime;
+            shouldWrite = true;
 
-                OnStatusMessage?.Invoke($"Recording stopped at {DateTime.Now:HH:mm:ss.fff} — writing files.");
-
-                // Fire-and-forget the async write — never blocks the UI or thread pool
-                _ = WriteFilesAsync(pre, post, captureTime);
-            }
+            _recording   = false;
+            _postBuffer  = null;
+            _preSnapshot = null;
         }
+        // ── Lock released — safe to invoke events and start async write ───────
+        if (!shouldWrite) return;
+
+        OnStatusMessage?.Invoke($"Recording stopped at {DateTime.Now:HH:mm:ss.fff} — writing files.");
+        _ = WriteFilesAsync(pre!, post!, captureTime);
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────
