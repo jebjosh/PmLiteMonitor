@@ -130,7 +130,8 @@ public class TelemetryRecorder
 
                 OnStatusMessage?.Invoke($"Recording stopped at {DateTime.Now:HH:mm:ss.fff} — writing files.");
 
-                Task.Run(() => WriteFiles(pre, post, captureTime));
+                // Fire-and-forget the async write — never blocks the UI or thread pool
+                _ = WriteFilesAsync(pre, post, captureTime);
             }
         }
     }
@@ -147,7 +148,18 @@ public class TelemetryRecorder
         }
     }
 
-    private void WriteFiles(
+    /// <summary>
+    /// Builds binary and text content entirely in memory, then flushes to disk
+    /// using a single awaited WriteAllBytesAsync / WriteAllTextAsync call.
+    ///
+    /// Why this doesn't hang the UI:
+    ///   - MemoryStream writes are pure RAM — microseconds, no disk involvement
+    ///   - File.WriteAllBytesAsync uses true async I/O (overlapped I/O on Windows)
+    ///     so the calling thread is released back to the thread pool while the OS
+    ///     handles the disk write, then the continuation resumes when it's done
+    ///   - The UI thread is never involved at any point
+    /// </summary>
+    private async Task WriteFilesAsync(
         (DateTime ts, byte[] frame)[] pre,
         (DateTime ts, byte[] frame)[] post,
         DateTime captureTime)
@@ -159,23 +171,19 @@ public class TelemetryRecorder
             string txtPath = Path.Combine(_outputPath, $"telemetry_MRS_{stamp}.txt");
 
             // Merge and sort chronologically
-            var all = pre
-                .Concat(post)
-                .OrderBy(x => x.ts)
-                .ToList();
+            var all = pre.Concat(post).OrderBy(x => x.ts).ToList();
 
-            // ── Binary file ──────────────────────────────────────────────────
-            // Format per entry:
-            //   8  bytes  — Unix ms timestamp (Int64, little-endian)
-            //   4  bytes  — frame length (Int32, little-endian)
-            //   N  bytes  — raw frame bytes
-            using (var fs  = new FileStream(binPath, FileMode.Create, FileAccess.Write))
-            using (var bw  = new BinaryWriter(fs))
+            // ── Binary — build entirely in MemoryStream, then write async ────
+            // MemoryStream is just a byte array in RAM — no disk I/O yet.
+            // BinaryWriter wraps it exactly like it would wrap a FileStream,
+            // so the write logic is identical — only the destination changes.
+            byte[] binBytes;
+            using (var ms = new MemoryStream())
+            using (var bw = new BinaryWriter(ms))
             {
-                // Header
-                bw.Write(Encoding.ASCII.GetBytes("PMLITE_TLM"));  // 10-byte magic
-                bw.Write((byte)1);                                  // version
-                bw.Write(all.Count);                                // entry count
+                bw.Write(Encoding.ASCII.GetBytes("PMLITE_TLM")); // 10-byte magic
+                bw.Write((byte)1);                                // version
+                bw.Write(all.Count);                              // entry count
                 bw.Write(new DateTimeOffset(captureTime).ToUnixTimeMilliseconds());
 
                 foreach (var (ts, frame) in all)
@@ -184,27 +192,34 @@ public class TelemetryRecorder
                     bw.Write(frame.Length);
                     bw.Write(frame);
                 }
+
+                bw.Flush();
+                binBytes = ms.ToArray();  // snapshot the buffer as a plain byte[]
             }
 
-            // ── Text file ────────────────────────────────────────────────────
-            // Human-readable: timestamp, message type, hex dump
-            using (var sw = new StreamWriter(txtPath, append: false, Encoding.UTF8))
+            // Single async write — OS handles disk I/O, this thread is freed
+            await File.WriteAllBytesAsync(binPath, binBytes).ConfigureAwait(false);
+
+            // ── Text — build into StringBuilder, then write async ────────────
+            // StringBuilder is also pure RAM — no disk I/O until WriteAllTextAsync.
+            var sb = new StringBuilder();
+            sb.AppendLine($"PM-LITE Telemetry Capture — MRS ON @ {captureTime:yyyy-MM-dd HH:mm:ss.fff}");
+            sb.AppendLine($"Pre-window  : {PreWindowMs} ms");
+            sb.AppendLine($"Post-window : {PostWindowMs} ms");
+            sb.AppendLine($"Total frames: {all.Count}");
+            sb.AppendLine(new string('-', 80));
+            sb.AppendLine($"{"Timestamp",-26} {"Type",-6} {"Size",-6} {"Hex Bytes"}");
+            sb.AppendLine(new string('-', 80));
+
+            foreach (var (ts, frame) in all)
             {
-                sw.WriteLine($"PM-LITE Telemetry Capture — MRS ON @ {captureTime:yyyy-MM-dd HH:mm:ss.fff}");
-                sw.WriteLine($"Pre-window  : {PreWindowMs} ms");
-                sw.WriteLine($"Post-window : {PostWindowMs} ms");
-                sw.WriteLine($"Total frames: {all.Count}");
-                sw.WriteLine(new string('-', 80));
-                sw.WriteLine($"{"Timestamp",-26} {"Type",-6} {"Size",-6} {"Hex Bytes"}");
-                sw.WriteLine(new string('-', 80));
-
-                foreach (var (ts, frame) in all)
-                {
-                    string label = frame.Length > 0 ? TypeLabel(frame[0]) : "?";
-                    string hex   = BitConverter.ToString(frame).Replace("-", " ");
-                    sw.WriteLine($"{ts:HH:mm:ss.fff}  {frame[0],-6} {label,-12} {frame.Length,-6} {hex}");
-                }
+                string label = frame.Length > 0 ? TypeLabel(frame[0]) : "?";
+                string hex   = BitConverter.ToString(frame).Replace("-", " ");
+                sb.AppendLine($"{ts:HH:mm:ss.fff}  {frame[0],-6} {label,-12} {frame.Length,-6} {hex}");
             }
+
+            // Single async write — OS handles disk I/O, this thread is freed
+            await File.WriteAllTextAsync(txtPath, sb.ToString(), Encoding.UTF8).ConfigureAwait(false);
 
             OnRecordingComplete?.Invoke(
                 $"Saved: {Path.GetFileName(binPath)} + {Path.GetFileName(txtPath)}  ({all.Count} frames)");
