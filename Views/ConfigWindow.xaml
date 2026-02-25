@@ -6,7 +6,7 @@
         Title="Configuration (Debug Mode)"
         Background="#121212" Foreground="White"
         FontFamily="Segoe UI"
-        Width="720" Height="740"
+        Width="720" Height="1040"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         TextElement.Foreground="White"
@@ -332,6 +332,64 @@
                             Background="#B71C1C" Foreground="White" Padding="20,8"/>
                 </StackPanel>
             </Grid>
+        </Border>
+
+        <!-- ═══ Periodic Sender ═══════════════════════════════════════════════ -->
+        <Border Style="{StaticResource SectionBorder}" Margin="0,0,0,8">
+            <StackPanel>
+                <TextBlock Text="Periodic Sender" Style="{StaticResource SectionHeader}"/>
+                <TextBlock Text="Automatically sends a message to the server on a fixed interval."
+                           FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,8" TextWrapping="Wrap"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Interval -->
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Interval (seconds)" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,2"/>
+                        <TextBox Text="{Binding PeriodicIntervalText, UpdateSourceTrigger=PropertyChanged}"
+                                 Foreground="White" CaretBrush="White"
+                                 md:HintAssist.Hint="30"
+                                 md:HintAssist.Foreground="#AAAAAA"
+                                 Height="32"/>
+                        <TextBlock Text="{Binding PeriodicIntervalError}"
+                                   Foreground="#FF5555" FontSize="9" Margin="0,2,0,0"/>
+                    </StackPanel>
+
+                    <!-- Message type picker -->
+                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                        <TextBlock Text="Message Type" FontSize="10" Foreground="#AAAAAA" Margin="0,0,0,2"/>
+                        <ComboBox SelectedValue="{Binding PeriodicMessageType}"
+                                  Foreground="White" Background="#2A2A2A" Height="32"
+                                  md:ComboBoxAssist.ShowSelectedItem="True">
+                            <ComboBoxItem Content="Null"/>
+                            <ComboBoxItem Content="Status"/>
+                            <ComboBoxItem Content="Loopback"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Start / Stop + status -->
+                    <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                        <Border CornerRadius="3" Padding="8,3" Background="#2A2A2A" Margin="0,0,0,6">
+                            <TextBlock Text="{Binding PeriodicStatus}"
+                                       Foreground="White" FontSize="11" MinWidth="80"/>
+                        </Border>
+                        <Button Content="Start"
+                                Command="{Binding StartPeriodicCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="#1B5E20" Foreground="White"
+                                Padding="16,6" Margin="0,0,0,4"/>
+                        <Button Content="Stop"
+                                Command="{Binding StopPeriodicCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Background="#B71C1C" Foreground="White"
+                                Padding="16,6"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
         </Border>
 
         <!-- ═══ Status Message + Ping ════════════════════════════════════════ -->

@@ -1,11 +1,12 @@
-using System.IO;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using MaterialDesignThemes.Wpf;
 using PmLiteMonitor.Controls;
 using PmLiteMonitor.Messages;
 using PmLiteMonitor.Networking;
 using PmLiteMonitor.Services;
+using System.IO;
+using System.Windows;
 using WinForms = System.Windows.Forms;
 
 namespace PmLiteMonitor.ViewModels;
@@ -16,6 +17,10 @@ public partial class MainViewModel : ObservableObject
     public TcpMessageClient Client { get; } = new();
 
     private readonly TelemetryRecorder _recorder = new();
+    private readonly PeriodicSender    _periodic = new();
+
+    /// <summary>Exposed so ConfigViewModel can set Message and Interval.</summary>
+    public PeriodicSender Periodic => _periodic;
 
     /// <summary>Shared across MainWindow and AboutWindow.</summary>
     public AboutViewModel AboutVm { get; } = new();
@@ -158,6 +163,9 @@ public partial class MainViewModel : ObservableObject
                 RecordStatus = msg;
                 AppendLog($"[RECORD] {msg}");
             });
+
+        _periodic.OnStatus += msg => AppendLog(msg);
+        _periodic.OnError  += ex  => AppendLog($"[PERIODIC ERROR] {ex.Message}");
 
         Client.OnMessageReceived += OnMessageReceived;
         Client.OnWarning         += msg => AppendLog($"[WARN]  {msg}");
@@ -307,6 +315,7 @@ public partial class MainViewModel : ObservableObject
             Endpoint     = endpoint;
             TcpIconState = IconState.Green;
             AppendLog($"[CONNECT] Connected to {endpoint}");
+            _periodic.Start(Client);
         }
         catch (Exception ex)
         {
@@ -317,6 +326,7 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     public async Task DisconnectAsync()
     {
+        _periodic.Stop();
         await Client.DisconnectAsync();
         SystemState  = "Disconnected";
         IsConnected  = false;
@@ -355,3 +365,9 @@ public partial class MainViewModel : ObservableObject
             _recorder.OutputPath = value;
     }
 }
+
+
+ //<Button Style = "{StaticResource MaterialDesignIconButton}"
+ //                       ToolTip="Message Viewer" Click="OpenMessageViewer_Click">
+ //                   <md:PackIcon Kind = "FileSearchOutline" Width="22" Height="22"/>
+ //               </Button>
