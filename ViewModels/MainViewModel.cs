@@ -1,12 +1,11 @@
+using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using MaterialDesignThemes.Wpf;
 using PmLiteMonitor.Controls;
 using PmLiteMonitor.Messages;
 using PmLiteMonitor.Networking;
 using PmLiteMonitor.Services;
-using System.IO;
-using System.Windows;
 using WinForms = System.Windows.Forms;
 
 namespace PmLiteMonitor.ViewModels;
@@ -18,6 +17,7 @@ public partial class MainViewModel : ObservableObject
 
     private readonly TelemetryRecorder _recorder = new();
     private readonly PeriodicSender    _periodic = new();
+    private readonly SessionLogger     _logger   = new();
 
     /// <summary>Exposed so ConfigViewModel can set Message and Interval.</summary>
     public PeriodicSender Periodic => _periodic;
@@ -132,8 +132,16 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _recordStatus = "Idle — waiting for MRS ON";
 
     // ── Log ──────────────────────────────────────────────────────────────────
-    [ObservableProperty] private string _eventLog = string.Empty;
+    [ObservableProperty] private string _eventLog   = string.Empty;
     [ObservableProperty] private bool   _logRaw;
+    [ObservableProperty] private string _logFolder  = string.Empty;  // bound to UI textbox
+    [ObservableProperty] private string _logFilePath = string.Empty; // shows current file name
+
+    partial void OnLogFolderChanged(string value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+            _logger.LogFolder = value;
+    }
 
     // ── Events raised for ConfigWindow ────────────────────────────────────────
     public event Action<LoopbackMessage>? LoopbackReceived;
@@ -163,6 +171,14 @@ public partial class MainViewModel : ObservableObject
                 RecordStatus = msg;
                 AppendLog($"[RECORD] {msg}");
             });
+
+        // ── Session logger ────────────────────────────────────────────────────
+        // Start() opens the file immediately so every log line from launch
+        // onwards is captured. The folder defaults to ~/Documents/PmLiteLogs.
+        _logger.Start();
+        LogFolder   = _logger.LogFolder;
+        LogFilePath = System.IO.Path.GetFileName(_logger.LogPath);
+        AppendLog($"[LOG] Session log started → {_logger.LogPath}");
 
         _periodic.OnStatus += msg => AppendLog(msg);
         _periodic.OnError  += ex  => AppendLog($"[PERIODIC ERROR] {ex.Message}");
@@ -315,7 +331,10 @@ public partial class MainViewModel : ObservableObject
             Endpoint     = endpoint;
             TcpIconState = IconState.Green;
             AppendLog($"[CONNECT] Connected to {endpoint}");
-            _periodic.Start(Client);
+            // NOTE: PeriodicSender is NOT started automatically on connect.
+            // The user configures the interval and message type in the Config
+            // window and clicks Start. This ensures nothing is sent until
+            // the user has intentionally chosen what to send.
         }
         catch (Exception ex)
         {
@@ -351,11 +370,33 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ClearLog() => EventLog = string.Empty;
 
+    [RelayCommand]
+    private void BrowseLogFolder()
+    {
+        var dlg = new WinForms.FolderBrowserDialog
+        {
+            Description  = "Select session log output folder",
+            SelectedPath = LogFolder
+        };
+        if (dlg.ShowDialog() == WinForms.DialogResult.OK)
+        {
+            LogFolder         = dlg.SelectedPath;
+            _logger.LogFolder = dlg.SelectedPath;
+        }
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
     private void AppendLog(string line)
     {
+        // Format the line once — same text goes to the UI and the log file
+        string formatted = $"{DateTime.Now:HH:mm:ss.fff}  {line}";
+
+        // Write to disk first (no UI dependency, any thread is fine)
+        _logger.Write(formatted);
+
+        // Update the UI — must be on the dispatcher thread
         System.Windows.Application.Current?.Dispatcher.Invoke(() =>
-            EventLog += $"{DateTime.Now:HH:mm:ss.fff}  {line}\n");
+            EventLog += formatted + "\n");
     }
 
     // Partial property change — update recorder output path when it changes in the UI
@@ -365,9 +406,3 @@ public partial class MainViewModel : ObservableObject
             _recorder.OutputPath = value;
     }
 }
-
-
- //<Button Style = "{StaticResource MaterialDesignIconButton}"
- //                       ToolTip="Message Viewer" Click="OpenMessageViewer_Click">
- //                   <md:PackIcon Kind = "FileSearchOutline" Width="22" Height="22"/>
- //               </Button>

@@ -6,7 +6,7 @@
         Title="Configuration (Debug Mode)"
         Background="#121212" Foreground="White"
         FontFamily="Segoe UI"
-        Width="720" Height="1040"
+        Width="720" Height="740"
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False"
         TextElement.Foreground="White"
@@ -116,7 +116,9 @@
                         <Button Content="Connect"
                                 Command="{Binding ConnectCommand}"
                                 IsEnabled="{Binding IsConnected, Converter={StaticResource InverseBoolConverter}}"
-                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Style="{StaticResource DisabledTooltipButton}"
+                                ToolTip="Enter a valid IP address and port before connecting"
+                                ToolTipService.ShowOnDisabled="True"
                                 Background="#1B5E20" Foreground="White"
                                 Padding="12,6" Margin="0,0,0,4"/>
                         <Button Content="Disconnect"
@@ -198,7 +200,9 @@
                     </Border>
                     <Button Content="Send"
                             Command="{Binding SendConfigCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            ToolTip="Connect to firmware before sending configuration"
+                            ToolTipService.ShowOnDisabled="True"
+                            Style="{StaticResource DisabledTooltipButton}"
                             Foreground="White" Padding="20,8"/>
                 </StackPanel>
             </Grid>
@@ -324,7 +328,9 @@
                     </Border>
                     <Button Content="Send"
                             Command="{Binding SendLoopbackCommand}"
-                            Style="{StaticResource MaterialDesignRaisedButton}"
+                            Style="{StaticResource DisabledTooltipButton}"
+                            ToolTip="All fields must be valid (0–255 or hex). Count=255 for infinite mode."
+                            ToolTipService.ShowOnDisabled="True"
                             Foreground="White" Padding="20,8" Margin="0,0,0,4"/>
                     <Button Content="Stop"
                             Command="{Binding StopLoopbackCommand}"
@@ -365,9 +371,10 @@
                         <ComboBox SelectedValue="{Binding PeriodicMessageType}"
                                   Foreground="White" Background="#2A2A2A" Height="32"
                                   md:ComboBoxAssist.ShowSelectedItem="True">
+                            <!-- Add new message types here — match the string exactly
+                                 to the case in ConfigViewModel.BuildPeriodicMessage() -->
                             <ComboBoxItem Content="Null"/>
                             <ComboBoxItem Content="Status"/>
-                            <ComboBoxItem Content="Loopback"/>
                         </ComboBox>
                     </StackPanel>
 

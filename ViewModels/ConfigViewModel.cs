@@ -87,6 +87,90 @@ public partial class ConfigViewModel : ObservableObject
     // ── Debug output ──────────────────────────────────────────────────────────
     [ObservableProperty] private string _debugOutput = string.Empty;
 
+    // ── Periodic Sender ───────────────────────────────────────────────────────
+    // These are the ONLY two things you need to configure:
+    //   PeriodicIntervalText — how many seconds between sends
+    //   PeriodicMessageType  — which message to send each tick
+    //
+    // When you click Start, ApplyPeriodicSettings() reads both values and
+    // writes them into _mainVm.Periodic.Message and _mainVm.Periodic.Interval.
+    // The PeriodicSender loop then sends that message every N seconds
+    // until Stop is clicked or the connection drops.
+
+    [ObservableProperty] private string _periodicIntervalText  = "30";
+    [ObservableProperty] private string _periodicIntervalError = string.Empty;
+    [ObservableProperty] private string _periodicMessageType   = "Null";
+    [ObservableProperty] private string _periodicStatus        = "Stopped";
+    [ObservableProperty] private bool   _isPeriodicRunning;
+
+    // Fires on every keystroke in the interval field — validates and
+    // pushes new interval into the sender if it is already running
+    partial void OnPeriodicIntervalTextChanged(string value)
+    {
+        bool ok = int.TryParse(value?.Trim(), out int s) && s > 0;
+        PeriodicIntervalError = ok ? string.Empty : "Enter a positive number (seconds)";
+        // Update interval live — takes effect on the next tick without restarting
+        if (ok) _mainVm.Periodic.Interval = TimeSpan.FromSeconds(s);
+    }
+
+    // Fires when the dropdown selection changes — push the new message into the slot
+    partial void OnPeriodicMessageTypeChanged(string value)
+    {
+        _mainVm.Periodic.Message = BuildPeriodicMessage(value);
+    }
+
+    // ── THIS IS WHERE YOU SET WHAT MESSAGE TO SEND ────────────────────────────
+    // Add a new case here for any message type you want the periodic sender to use.
+    // The string matches what you put in the ComboBox in the XAML.
+    private IMessage BuildPeriodicMessage(string type) => type switch
+    {
+        "Null"        => new NullMessage(),
+        "Status"      => new RequestMessage(MessageTypes.Status),
+        // To add your own: put a new case here, e.g.:
+        // "Config"   => new ConfigurationMessage(PacFlight, PacMissile, TermSafed, TermArmed, DudOverride, ResetFlag),
+        // "Loopback" => new LoopbackMessage(255, 0xAA, 0xBB, 0xCC, 0xDD),
+        _             => new NullMessage()
+    };
+
+    // Pushes current UI values into the PeriodicSender without restarting it.
+    // Called both by Start and by any field change while already running.
+    private void ApplyPeriodicSettings()
+    {
+        if (!int.TryParse(PeriodicIntervalText?.Trim(), out int secs) || secs <= 0) return;
+        _mainVm.Periodic.Interval = TimeSpan.FromSeconds(secs);
+
+        // THIS sets the message that will be sent on every tick
+        _mainVm.Periodic.Message = BuildPeriodicMessage(PeriodicMessageType);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanStartPeriodic))]
+    private void StartPeriodic()
+    {
+        ApplyPeriodicSettings();                    // push Message + Interval into the sender
+        _mainVm.Periodic.Start(_client);            // start the loop
+        IsPeriodicRunning  = true;
+        PeriodicStatus     = $"Running — every {PeriodicIntervalText}s";
+        StartPeriodicCommand.NotifyCanExecuteChanged();
+        StopPeriodicCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanStartPeriodic() =>
+        !IsPeriodicRunning &&
+        string.IsNullOrEmpty(PeriodicIntervalError) &&
+        int.TryParse(PeriodicIntervalText?.Trim(), out int s) && s > 0;
+
+    [RelayCommand(CanExecute = nameof(CanStopPeriodic))]
+    private void StopPeriodic()
+    {
+        _mainVm.Periodic.Stop();
+        IsPeriodicRunning  = false;
+        PeriodicStatus     = "Stopped";
+        StartPeriodicCommand.NotifyCanExecuteChanged();
+        StopPeriodicCommand.NotifyCanExecuteChanged();
+    }
+
+    private bool CanStopPeriodic() => IsPeriodicRunning;
+
     // ── Loopback state ────────────────────────────────────────────────────────
     private CancellationTokenSource?               _loopbackCts;
 

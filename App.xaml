@@ -60,6 +60,30 @@
                 <Setter Property="VerticalAlignment" Value="Center"/>
             </Style>
 
+            <!--
+                DisabledTooltipButton — shows ToolTip ONLY when the button is disabled.
+
+                How to use on any button:
+                  <Button Style="{StaticResource DisabledTooltipButton}"
+                          ToolTip="Reason the button is disabled"
+                          ToolTipService.ShowOnDisabled="True"
+                          Content="Send"/>
+
+                How it works:
+                  ToolTip is set to the "why disabled" message.
+                  ShowOnDisabled=True lets WPF show tooltips on disabled elements.
+                  The IsEnabled=True trigger nulls the tooltip out while active,
+                  so users only see it when the button is actually grayed out.
+            -->
+            <Style x:Key="DisabledTooltipButton" TargetType="Button"
+                   BasedOn="{StaticResource MaterialDesignRaisedButton}">
+                <Style.Triggers>
+                    <Trigger Property="IsEnabled" Value="True">
+                        <Setter Property="ToolTip" Value="{x:Null}"/>
+                    </Trigger>
+                </Style.Triggers>
+            </Style>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

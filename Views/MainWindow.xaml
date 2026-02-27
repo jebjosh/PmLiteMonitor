@@ -9,9 +9,56 @@
         Width="1000" Height="870"
         WindowStartupLocation="CenterScreen">
 
+    <Window.Resources>
+        <SolidColorBrush x:Key="MaterialDesignBody"                   Color="White"/>
+        <SolidColorBrush x:Key="MaterialDesignBodyLight"              Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="MaterialDesignTextFieldBoxBackground"  Color="#2A2A2A"/>
+
+        <Style x:Key="DarkOutlinedTextBox" TargetType="TextBox">
+            <Setter Property="Background"      Value="#333333"/>
+            <Setter Property="Foreground"      Value="White"/>
+            <Setter Property="CaretBrush"      Value="White"/>
+            <Setter Property="SelectionBrush"  Value="#6690CAF9"/>
+            <Setter Property="BorderBrush"     Value="#666666"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding"         Value="6,4"/>
+            <Setter Property="FontSize"        Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Focusable="False"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Margin="{TemplateBinding Padding}"
+                                          TextElement.Foreground="White"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush"     Value="#90CAF9"/>
+                                <Setter TargetName="border" Property="BorderThickness" Value="2"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#888888"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="TextBox" BasedOn="{StaticResource DarkOutlinedTextBox}"/>
+    </Window.Resources>
+
     <Grid Margin="8">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -31,6 +78,18 @@
                 <Button Style="{StaticResource MaterialDesignIconButton}"
                         ToolTip="Configuration" Click="OpenConfig_Click">
                     <md:PackIcon Kind="Cog" Width="22" Height="22"/>
+                </Button>
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="Path Settings" Click="OpenPathSettings_Click">
+                    <md:PackIcon Kind="FolderCogOutline" Width="22" Height="22"/>
+                </Button>
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="Path Settings" Click="OpenPathSettings_Click">
+                    <md:PackIcon Kind="FolderCogOutline" Width="22" Height="22"/>
+                </Button>
+                <Button Style="{StaticResource MaterialDesignIconButton}"
+                        ToolTip="Message Viewer" Click="OpenMessageViewer_Click">
+                    <md:PackIcon Kind="FileSearchOutline" Width="22" Height="22"/>
                 </Button>
                 <Button Style="{StaticResource MaterialDesignIconButton}"
                         ToolTip="About" Click="OpenAbout_Click">
@@ -343,30 +402,8 @@
             </Border>
         </Grid>
 
-        <!-- ═══ ROW 4: Record Output Path ════════════════════════════════════ -->
-        <Border Grid.Row="4" Style="{StaticResource SectionBorder}" Margin="0,0,0,5">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="Capture Output Path" VerticalAlignment="Center"
-                           Foreground="#90CAF9" FontWeight="SemiBold" Margin="0,0,10,0"/>
-                <TextBox Grid.Column="1"
-                         Text="{Binding RecordOutputPath, UpdateSourceTrigger=PropertyChanged}"
-                         Style="{StaticResource MaterialDesignOutlinedTextBox}"
-                         md:HintAssist.Hint="Path where .bin and .txt capture files will be written"
-                         Padding="6,2" Height="32"/>
-                <Button Grid.Column="2" Content="Browse…"
-                        Command="{Binding BrowseOutputPathCommand}"
-                        Style="{StaticResource MaterialDesignOutlinedButton}"
-                        Margin="6,0,0,0" Height="32"/>
-            </Grid>
-        </Border>
-
         <!-- ═══ ROW 5: Event Log ══════════════════════════════════════════════ -->
-        <Border Grid.Row="5" Style="{StaticResource SectionBorder}">
+        <Border Grid.Row="4" Style="{StaticResource SectionBorder}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>

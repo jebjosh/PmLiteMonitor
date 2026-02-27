@@ -10,14 +10,18 @@ namespace PmLiteMonitor.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly MainViewModel _vm;
-    private ConfigWindow? _configWindow;
-    private AboutWindow?  _aboutWindow;
+    private readonly MainViewModel    _vm;
+    private readonly ConfigViewModel  _configVm;   // created once, survives window close
+    private ConfigWindow?        _configWindow;
+    private AboutWindow?         _aboutWindow;
+    private MessageViewerWindow? _viewerWindow;
+    private PathSettingsWindow?  _pathSettingsWindow;
 
     public MainWindow()
     {
         InitializeComponent();
-        _vm = new MainViewModel();
+        _vm       = new MainViewModel();
+        _configVm = new ConfigViewModel(_vm.Client, _vm);  // single instance
         DataContext = _vm;
 
         // Auto-scroll log to bottom whenever text changes
@@ -36,9 +40,33 @@ public partial class MainWindow : Window
             return;
         }
 
-        var configVm = new ConfigViewModel(_vm.Client, _vm);
-        _configWindow = new ConfigWindow { DataContext = configVm, Owner = this };
+        // Reuse the same ConfigViewModel — all field values are preserved
+        _configWindow = new ConfigWindow { DataContext = _configVm, Owner = this };
         _configWindow.Show();
+    }
+
+    private void OpenMessageViewer_Click(object sender, RoutedEventArgs e)
+    {
+        if (_viewerWindow is { IsVisible: true })
+        {
+            _viewerWindow.Activate();
+            return;
+        }
+        // Each open creates a fresh viewer — user can have multiple instances
+        _viewerWindow = new MessageViewerWindow { Owner = this };
+        _viewerWindow.Show();
+    }
+
+    private void OpenPathSettings_Click(object sender, RoutedEventArgs e)
+    {
+        if (_pathSettingsWindow is { IsVisible: true })
+        {
+            _pathSettingsWindow.Activate();
+            return;
+        }
+        // Shares the same DataContext as MainWindow so all bindings work automatically
+        _pathSettingsWindow = new PathSettingsWindow { DataContext = _vm, Owner = this };
+        _pathSettingsWindow.Show();
     }
 
     private void OpenAbout_Click(object sender, RoutedEventArgs e)
@@ -49,7 +77,6 @@ public partial class MainWindow : Window
             return;
         }
 
-        // AboutVm is shared — firmware fields update live when StatusMessage arrives
         _aboutWindow = new AboutWindow { DataContext = _vm.AboutVm, Owner = this };
         _aboutWindow.Show();
     }
